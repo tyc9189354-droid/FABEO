@@ -32,6 +32,7 @@ from FABEO.core.msp import MSP, PolicyParser
 from FABEO.core.dfa import DFA
 from FABEO.runner.benchmark_runner import BenchmarkRunner
 from FABEO.core.metrics import SchemeMetrics
+from FABEO.tool import FabeoTool
 
 
 CURVE_SPECS = {
@@ -317,6 +318,7 @@ class FabeoEvaluationHandler(SimpleHTTPRequestHandler):
             runner = BenchmarkRunner(curve_name=curve_name)
             cp_results = runner.run_cp_benchmark(attribute_counts=attribute_counts, trials=trials)
             kp_results = runner.run_kp_benchmark(attribute_counts=attribute_counts, trials=trials)
+            dfa_results = runner.run_dfa_benchmark([10, 20, 50, 100], trials=trials)
 
             results_dicts = [m.to_dict() for m in cp_results + kp_results]
 
@@ -324,7 +326,135 @@ class FabeoEvaluationHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(json.dumps({"success": True, "results": results_dicts}).encode("utf-8"))
+            self.wfile.write(json.dumps({
+                "success": True, 
+                "results": results_dicts,
+                "dfa_results": dfa_results
+            }).encode("utf-8"))
+            return
+
+        elif path == "/api/crypto-demo":
+            scheme = req_json.get("scheme", "FABEO_CP")
+            policy_str = req_json.get("policy", "(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR")
+            user_attrs = req_json.get("attributes", ["MEDICINE:DOCTOR", "DEPT:CARDIOLOGY"])
+            message_text = req_json.get("message", "機密基因定序與病歷機密資訊 (Confidential Genomic Profile #7829)")
+            curve_name = req_json.get("curve", "BLS12-381")
+
+            try:
+                tool = FabeoTool(curve_name=curve_name)
+                msg_bytes = message_text.encode("utf-8")
+
+                if scheme == "FABEO_KP":
+                    t0 = time.perf_counter_ns()
+                    mpk, msk = tool.kp_setup()
+                    t_setup = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    sk = tool.kp_keygen(msk, policy_str)
+                    t_keygen = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    pkg = tool.kp_encrypt_message(mpk, set(user_attrs), msg_bytes)
+                    t_enc = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    try:
+                        dec = tool.kp_decrypt_message(mpk, pkg, sk)
+                        t_dec = (time.perf_counter_ns() - t0) / 1_000_000.0
+                        satisfied = True
+                        dec_text = dec.decode("utf-8", errors="replace")
+                    except Exception:
+                        t_dec = (time.perf_counter_ns() - t0) / 1_000_000.0
+                        satisfied = False
+                        dec_text = None
+
+                    pairings = len(user_attrs) + 1
+
+                elif scheme == "FABEO_DFA":
+                    word = req_json.get("word", "CGTA")
+                    t0 = time.perf_counter_ns()
+                    alphabet = {"A", "C", "G", "T"}
+                    mpk, msk = tool.dfa_setup(alphabet)
+                    t_setup = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    dfa = DFA(num_states=len(word) + 1)
+                    dfa.set_start_state(0)
+                    for idx, ch in enumerate(word):
+                        dfa.add_transition(idx, ch, idx + 1)
+                    dfa.set_accept_state(len(word))
+
+                    t0 = time.perf_counter_ns()
+                    sk = tool.dfa_keygen(msk, dfa)
+                    t_keygen = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    pkg = tool.dfa_encrypt_message(mpk, word, msg_bytes)
+                    t_enc = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    try:
+                        dec = tool.dfa_decrypt_message(mpk, pkg, sk)
+                        t_dec = (time.perf_counter_ns() - t0) / 1_000_000.0
+                        satisfied = True
+                        dec_text = dec.decode("utf-8", errors="replace")
+                    except Exception:
+                        t_dec = (time.perf_counter_ns() - t0) / 1_000_000.0
+                        satisfied = False
+                        dec_text = None
+
+                    pairings = len(word) + 2
+
+                else:  # Default FABEO_CP
+                    t0 = time.perf_counter_ns()
+                    mpk, msk = tool.cp_setup()
+                    t_setup = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    sk = tool.cp_keygen(msk, set(user_attrs))
+                    t_keygen = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    pkg = tool.cp_encrypt_message(mpk, policy_str, msg_bytes)
+                    t_enc = (time.perf_counter_ns() - t0) / 1_000_000.0
+
+                    t0 = time.perf_counter_ns()
+                    try:
+                        dec = tool.cp_decrypt_message(mpk, pkg, sk)
+                        t_dec = (time.perf_counter_ns() - t0) / 1_000_000.0
+                        satisfied = True
+                        dec_text = dec.decode("utf-8", errors="replace")
+                    except Exception:
+                        t_dec = (time.perf_counter_ns() - t0) / 1_000_000.0
+                        satisfied = False
+                        dec_text = None
+
+                    pairings = 3  # Constant!
+
+                resp = {
+                    "success": True,
+                    "scheme": scheme,
+                    "curve": curve_name,
+                    "satisfied": satisfied,
+                    "original_message": message_text,
+                    "decrypted_message": dec_text,
+                    "timings": {
+                        "setup_ms": round(t_setup, 3),
+                        "keygen_ms": round(t_keygen, 3),
+                        "encrypt_ms": round(t_enc, 3),
+                        "decrypt_ms": round(t_dec, 3),
+                        "total_ms": round(t_setup + t_keygen + t_enc + t_dec, 3),
+                    },
+                    "pairings": pairings,
+                    "status_message": "✓ 驗證成功：明文完整還原，存取策略符合！" if satisfied else "✗ 驗證失敗：解密者屬性未滿足存取策略矩陣 (Access Denied)"
+                }
+            except Exception as ex:
+                resp = {"success": False, "error": str(ex)}
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(resp).encode("utf-8"))
             return
 
         self.send_response(404)
