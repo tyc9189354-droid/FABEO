@@ -116,9 +116,8 @@ python3 main.py web --port 8080
 > - **計算成本評估 (Computational Cost)**：解密、加密、KeyGen 耗時與配對次數 (Pairings) 折線圖、群運算細部計數。
 > - **儲存與頻寬成本評估 (Storage Cost)**：支援 **BLS12-381 / BN254 / MNT224** 雙線性配對曲線與點壓縮切換，自動換算私鑰與密文之實體位元組 (Bytes / KB) 及空間節省百分比。
 > - **自訂策略即時試算機 (Policy Calculator)**：即時解析單調布林存取控制策略（MSP 矩陣、$\tau$ 參數、滿足性），即刻試算各方案開銷對比。
-> - **本機即時跑分 (Live Benchmark)**：直接從網頁點擊觸發本機 CPU 實際密碼學跑分並即時刷新圖表。
-> - **專案結構與 Tree 遍歷成本分析 (Tree Cost)**：精準評估檔案走訪（Wall Time、User/Kernel CPU 劃分、Peak RSS 記憶體常駐、系統調用 `stat`/`getdents`）與 Big-O 理論複雜度分析。
-> - **離線獨立運行**：亦可直接用瀏覽器開啟 `web/index.html` 或 `web/tree_cost.html`，內建完整預載資料集與前端離線試算模組。
+> - **本機即時跑分 (Live Benchmark)**：直接從網頁點擊觸發密碼學跑分與即時加解密實體驗證，支援本機 Python 與純前端雙引擎。
+> - **離線獨立運行**：亦可直接用瀏覽器開啟 `web/index.html`，內建完整預載資料集與前端離線試算模組。
 > - **GitHub Pages 線上預覽**：支援透過 GitHub Actions 自動發布至 GitHub Pages 線上網站。
 
 ---
