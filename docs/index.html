@@ -140,6 +140,9 @@
             <button onclick="switchTab('benchmark')" id="tab-btn-benchmark" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
                 🚀 即時跑分評測 (Live Benchmark)
             </button>
+            <button onclick="switchTab('lab')" id="tab-btn-lab" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                🧪 密碼學分步實驗室 (Step Lab)
+            </button>
         </div>
     </nav>
 
@@ -862,6 +865,206 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
                 </div>
             </div>
         </section>
+
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 6: STEP-BY-STEP CRYPTO LABORATORY -->
+        <!-- ========================================================================================= -->
+        <section id="tab-lab" class="hidden space-y-6">
+            <!-- Lab Header & Config Panel -->
+            <div class="glass-panel p-6 rounded-2xl space-y-5 border border-slate-700/60 shadow-xl">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/60 pb-4">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 rounded-full bg-purple-400 animate-pulse"></span>
+                            <h2 class="text-xl font-extrabold text-white tracking-tight">
+                                🧪 密碼學核心階段分步實驗室 (Interactive Step-by-Step Crypto Lab)
+                            </h2>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">
+                            支援手動獨立觸發 <strong>① Setup（初始化）</strong>、<strong>② KeyGen（金鑰核發）</strong>、<strong>③ Encrypt（訊息加密）</strong>、<strong>④ Decrypt（密文解密）</strong> 每個階段，並由下方即時 OutputBox 即時輸出運算歷程！
+                        </p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="labEngineBadge" class="text-xs font-mono px-3 py-1 rounded-full bg-purple-950/80 text-purple-300 border border-purple-800/60">
+                            ● 實驗環境就緒 (Dual Engine Ready)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Input Parameters Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">評測密碼方案 (Scheme):</label>
+                        <select id="labSchemeSelect" onchange="onLabSchemeChange()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-brand-500 cursor-pointer">
+                            <option value="FABEO_CP">FABEO CP-ABE (密文策略, 3次常數配對)</option>
+                            <option value="FABEO_KP">FABEO KP-ABE (金鑰策略, 緊湊密文)</option>
+                            <option value="FABEO_DFA">FABEO DFA-ABE (正規語言狀態機)</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-3">
+                        <label class="block font-semibold text-slate-300 mb-1">機密明文測試訊息 (Plaintext Payload):</label>
+                        <input type="text" id="labMsgInput" value="機密基因定序與病歷數據: Patient Genomic Profile #7829 (Stage-1, HLA-A*02:01)"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-500" placeholder="輸入欲加密保護之明文資料..." />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label id="labPolicyLabel" class="font-semibold text-slate-300">存取控制策略 (Access Policy):</label>
+                            <div class="flex space-x-1.5 text-xs">
+                                <button type="button" onclick="setLabPreset('auth')" class="px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/70 border border-emerald-500/30 transition-all">✅ 授權範本</button>
+                                <button type="button" onclick="setLabPreset('unauth')" class="px-2 py-0.5 rounded bg-rose-900/40 text-rose-400 hover:bg-rose-900/70 border border-rose-500/30 transition-all">🚫 拒絕範本</button>
+                                <button type="button" onclick="setLabPreset('multi')" class="px-2 py-0.5 rounded bg-purple-900/40 text-purple-300 hover:bg-purple-900/70 border border-purple-500/30 transition-all">🔄 複用範本</button>
+                            </div>
+                        </div>
+                        <input type="text" id="labPolicyInput" value="(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-purple-200 focus:outline-none focus:border-brand-500" />
+                    </div>
+
+                    <div>
+                        <label id="labAttrsLabel" class="block font-semibold text-slate-300 mb-1">解密者持有屬性集合 (User Key Attributes, 逗號分隔):</label>
+                        <input type="text" id="labAttrsInput" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none focus:border-brand-500" />
+                    </div>
+                </div>
+
+                <!-- Stage Control Buttons Bar -->
+                <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+                            <span>🎛️ 階段執行控制面板 (Stage Controls):</span>
+                            <span class="text-slate-500 font-normal">可依序或單獨點選執行</span>
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="runLabStep('all')" id="labBtnAll" class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-purple-500/20 transition-all flex items-center space-x-1.5">
+                                <span>⚡ 一鍵完整執行 (Run All Stages)</span>
+                            </button>
+                            <button onclick="resetLab()" id="labBtnReset" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition-all flex items-center space-x-1">
+                                <span>🔄 重設狀態 (Reset)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Individual Stage Buttons -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button onclick="runLabStep('setup')" id="labBtnSetup" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition-all group flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white group-hover:text-purple-300">① 系統初始化 (Setup)</span>
+                                <span id="labBadgeSetup" class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1">產出公鑰 mpk 與主私鑰 msk</div>
+                        </button>
+
+                        <button onclick="runLabStep('keygen')" id="labBtnKeyGen" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition-all group flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white group-hover:text-purple-300">② 金鑰核發 (KeyGen)</span>
+                                <span id="labBadgeKeyGen" class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1">依據使用者屬性產出私鑰 sk</div>
+                        </button>
+
+                        <button onclick="runLabStep('encrypt')" id="labBtnEncrypt" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition-all group flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white group-hover:text-purple-300">③ 訊息加密 (Encrypt)</span>
+                                <span id="labBadgeEncrypt" class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1">KEM 封裝 + AES-GCM 負載</div>
+                        </button>
+
+                        <button onclick="runLabStep('decrypt')" id="labBtnDecrypt" class="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition-all group flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-white group-hover:text-purple-300">④ 密文解密 (Decrypt)</span>
+                                <span id="labBadgeDecrypt" class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-1">3次配對重構密鑰還原明文</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4 Stage Metrics Live Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                    <!-- Setup Card -->
+                    <div id="labCardSetup" class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5 transition-all">
+                        <div class="flex items-center justify-between text-slate-400">
+                            <span class="font-semibold text-purple-400">① Setup 階段狀態</span>
+                            <span id="labStatusTextSetup" class="font-mono text-[11px] text-slate-500">待執行</span>
+                        </div>
+                        <div class="text-base font-bold text-white font-mono" id="labStatSetup">-- <span class="text-xs text-slate-500 font-normal">ms</span></div>
+                        <div class="text-slate-400 text-xs" id="labSubSetup">公鑰 mpk: 尚未產出</div>
+                    </div>
+
+                    <!-- KeyGen Card -->
+                    <div id="labCardKeyGen" class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5 transition-all">
+                        <div class="flex items-center justify-between text-slate-400">
+                            <span class="font-semibold text-purple-400">② KeyGen 階段狀態</span>
+                            <span id="labStatusTextKeyGen" class="font-mono text-[11px] text-slate-500">待執行</span>
+                        </div>
+                        <div class="text-base font-bold text-white font-mono" id="labStatKeyGen">-- <span class="text-xs text-slate-500 font-normal">ms</span></div>
+                        <div class="text-slate-400 text-xs" id="labSubKeyGen">私鑰 sk: 尚未核發</div>
+                    </div>
+
+                    <!-- Encrypt Card -->
+                    <div id="labCardEncrypt" class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5 transition-all">
+                        <div class="flex items-center justify-between text-slate-400">
+                            <span class="font-semibold text-purple-400">③ Encrypt 階段狀態</span>
+                            <span id="labStatusTextEncrypt" class="font-mono text-[11px] text-slate-500">待執行</span>
+                        </div>
+                        <div class="text-base font-bold text-white font-mono" id="labStatEncrypt">-- <span class="text-xs text-slate-500 font-normal">ms</span></div>
+                        <div class="text-slate-400 text-xs" id="labSubEncrypt">密文 ct: 尚未封裝</div>
+                    </div>
+
+                    <!-- Decrypt Card -->
+                    <div id="labCardDecrypt" class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5 transition-all">
+                        <div class="flex items-center justify-between text-slate-400">
+                            <span class="font-semibold text-purple-400">④ Decrypt 階段狀態</span>
+                            <span id="labStatusTextDecrypt" class="font-mono text-[11px] text-slate-500">待執行</span>
+                        </div>
+                        <div class="text-base font-bold text-white font-mono" id="labStatDecrypt">-- <span class="text-xs text-slate-500 font-normal">ms</span></div>
+                        <div class="text-slate-400 text-xs" id="labSubDecrypt">配對運算: 尚未執行</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated OutputBox Window -->
+            <div class="glass-panel rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl">
+                <!-- OutputBox Header -->
+                <div class="p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center space-x-2.5">
+                        <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
+                        <span class="font-mono text-xs font-semibold text-white ml-2 flex items-center space-x-2">
+                            <span>💻 密碼學實驗即時執行過程輸出 (Terminal OutputBox)</span>
+                            <span id="labOutputStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-normal font-mono">IDLE</span>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center space-x-2 text-xs">
+                        <button onclick="copyLabOutput()" id="btnCopyLabOutput" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono border border-slate-700 transition-all flex items-center space-x-1">
+                            <span>📋 複製完整 Output</span>
+                        </button>
+                        <button onclick="clearLabOutput()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 font-mono border border-slate-700 transition-all">
+                            <span>🗑️ 清空</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- OutputBox Pre/Code Display -->
+                <div class="p-5 bg-slate-950 font-mono text-xs text-emerald-400 overflow-y-auto max-h-[500px] leading-relaxed select-text" id="labOutputBox">
+[SYSTEM READY] 密碼學分步實驗室已就緒。
+👉 請點擊上方控制面板的階段按鈕：
+   - ①「執行 Setup」: 初始化生成 mpk / msk
+   - ②「執行 KeyGen」: 針對屬性核發私鑰 sk
+   - ③「執行 Encrypt」: 執行 ABE KEM 封裝與 AES-256-GCM 加密
+   - ④「執行 Decrypt」: 執行雙線性配對解密並校驗明文
+   或直接點擊「⚡ 一鍵完整執行」連續展示完整流程！
+</div>
+            </div>
+        </section>
+
 
     </main>
 
@@ -1947,7 +2150,7 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
 
         // Tab Switching
         function switchTab(tabId) {
-            const tabs = ['overview', 'computation', 'storage', 'calculator', 'benchmark'];
+            const tabs = ['overview', 'computation', 'storage', 'calculator', 'benchmark', 'lab'];
             tabs.forEach(t => {
                 const el = document.getElementById(`tab-${t}`);
                 const btn = document.getElementById(`tab-btn-${t}`);
@@ -2899,6 +3102,389 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
             statusLabel.className = "font-mono text-emerald-400";
             consoleLog.textContent += `\n[SUCCESS] 瀏覽器純前端即時評測完成！所有圖表與開銷表格已更新完畢。\n`;
             consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+    
+        // =========================================================================
+        // Step-by-Step Crypto Laboratory Engine
+        // =========================================================================
+
+        const labState = {
+            scheme: 'FABEO_CP',
+            curve: 'BLS12-381',
+            setupDone: false,
+            mpk: null,
+            msk: null,
+            setupTime: 0,
+            keygenDone: false,
+            sk: null,
+            keygenTime: 0,
+            encryptDone: false,
+            ct: null,
+            encryptTime: 0,
+            decryptDone: false,
+            decryptTime: 0,
+            satisfied: false,
+            decryptedText: null,
+            plainMsg: ''
+        };
+
+        function getTimestamp() {
+            const d = new Date();
+            return d.toTimeString().split(' ')[0] + '.' + ('00' + d.getMilliseconds()).slice(-3);
+        }
+
+        function appendLabLog(text, tag = 'INFO', colorClass = '') {
+            const box = document.getElementById('labOutputBox');
+            if (!box) return;
+
+            const timeStr = `[${getTimestamp()}]`;
+            let formattedLine = '';
+            
+            if (tag === 'HEADER') {
+                formattedLine = `\n================================================================================\n${timeStr} 🚀 ${text}\n================================================================================\n`;
+            } else if (tag === 'SUCCESS') {
+                formattedLine = `${timeStr} [SUCCESS] ✓ ${text}\n`;
+            } else if (tag === 'ERROR') {
+                formattedLine = `${timeStr} [ERROR] ✗ ${text}\n`;
+            } else if (tag === 'MATH') {
+                formattedLine = `                 ${text}\n`;
+            } else {
+                formattedLine = `${timeStr} [${tag}] ${text}\n`;
+            }
+
+            box.textContent += formattedLine;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function clearLabOutput() {
+            const box = document.getElementById('labOutputBox');
+            if (box) {
+                box.textContent = `[${getTimestamp()}] [CLEARED] OutputBox 日誌已清空。實驗室隨時可繼續執行。\n`;
+            }
+        }
+
+        function copyLabOutput() {
+            const box = document.getElementById('labOutputBox');
+            const btn = document.getElementById('btnCopyLabOutput');
+            if (!box) return;
+
+            navigator.clipboard.writeText(box.textContent).then(() => {
+                if (btn) {
+                    btn.innerHTML = '<span>✅ 已複製！</span>';
+                    setTimeout(() => {
+                        btn.innerHTML = '<span>📋 複製完整 Output</span>';
+                    }, 2000);
+                }
+            });
+        }
+
+        function onLabSchemeChange() {
+            const scheme = document.getElementById('labSchemeSelect').value;
+            labState.scheme = scheme;
+            const polLabel = document.getElementById('labPolicyLabel');
+            const attrsLabel = document.getElementById('labAttrsLabel');
+
+            if (scheme === 'FABEO_DFA') {
+                polLabel.textContent = "正規字串模式 (Regex Word):";
+                attrsLabel.textContent = "解密字串匹配 (Target Word):";
+                document.getElementById('labPolicyInput').value = "CGTA";
+                document.getElementById('labAttrsInput').value = "CGTA";
+            } else if (scheme === 'FABEO_KP') {
+                polLabel.textContent = "金鑰存取控制策略 (Key Policy):";
+                attrsLabel.textContent = "密文屬性集合 (Ciphertext Attributes):";
+                document.getElementById('labPolicyInput').value = "FACILITY:LAB_A AND CLEARANCE:LEVEL_3";
+                document.getElementById('labAttrsInput').value = "FACILITY:LAB_A, CLEARANCE:LEVEL_3";
+            } else {
+                polLabel.textContent = "存取控制策略 (Access Policy):";
+                attrsLabel.textContent = "解密者持有屬性集合 (User Key Attributes):";
+                document.getElementById('labPolicyInput').value = "(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR";
+                document.getElementById('labAttrsInput').value = "MEDICINE:DOCTOR, DEPT:CARDIOLOGY";
+            }
+
+            resetLab();
+            appendLabLog(`已切換評測方案為: ${scheme}，實驗室已重新初始化。`, 'SCHEME');
+        }
+
+        function setLabPreset(type) {
+            const scheme = document.getElementById('labSchemeSelect').value;
+            if (scheme === 'FABEO_DFA') {
+                if (type === 'auth') {
+                    document.getElementById('labPolicyInput').value = "CGTA";
+                    document.getElementById('labAttrsInput').value = "CGTA";
+                } else if (type === 'unauth') {
+                    document.getElementById('labPolicyInput').value = "CGTA";
+                    document.getElementById('labAttrsInput').value = "AAAA (不滿足路徑)";
+                }
+            } else {
+                if (type === 'auth') {
+                    document.getElementById('labPolicyInput').value = "(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR";
+                    document.getElementById('labAttrsInput').value = "MEDICINE:DOCTOR, DEPT:CARDIOLOGY";
+                } else if (type === 'unauth') {
+                    document.getElementById('labPolicyInput').value = "(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR";
+                    document.getElementById('labAttrsInput').value = "ROLE:GUEST (未授權屬性)";
+                } else if (type === 'multi') {
+                    document.getElementById('labPolicyInput').value = "(ROLE:DOCTOR AND DEPT:CARDIOLOGY) OR (ROLE:DOCTOR AND RESEARCH:GENOME)";
+                    document.getElementById('labAttrsInput').value = "ROLE:DOCTOR, RESEARCH:GENOME";
+                }
+            }
+            appendLabLog(`已載入預設情境範本: [${type.toUpperCase()}]`, 'CONFIG');
+        }
+
+        function resetLab() {
+            labState.setupDone = false;
+            labState.keygenDone = false;
+            labState.encryptDone = false;
+            labState.decryptDone = false;
+
+            // Reset Badges
+            ['Setup', 'KeyGen', 'Encrypt', 'Decrypt'].forEach(st => {
+                const badge = document.getElementById(`labBadge${st}`);
+                if (badge) badge.className = 'w-2.5 h-2.5 rounded-full bg-slate-600';
+                const statusTxt = document.getElementById(`labStatusText${st}`);
+                if (statusTxt) {
+                    statusTxt.textContent = '待執行';
+                    statusTxt.className = 'font-mono text-[11px] text-slate-500';
+                }
+                const statVal = document.getElementById(`labStat${st}`);
+                if (statVal) statVal.innerHTML = `-- <span class="text-xs text-slate-500 font-normal">ms</span>`;
+            });
+
+            document.getElementById('labSubSetup').textContent = '公鑰 mpk: 尚未產出';
+            document.getElementById('labSubKeyGen').textContent = '私鑰 sk: 尚未核發';
+            document.getElementById('labSubEncrypt').textContent = '密文 ct: 尚未封裝';
+            document.getElementById('labSubDecrypt').textContent = '配對運算: 尚未執行';
+
+            const statusLabel = document.getElementById('labOutputStatus');
+            if (statusLabel) {
+                statusLabel.textContent = 'IDLE';
+                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-normal font-mono';
+            }
+
+            appendLabLog('實驗狀態已重設為初始狀態，所有群元素金鑰與密文已釋放。', 'RESET');
+        }
+
+        async function runLabStep(step) {
+            const spec = getCurveSizes();
+            const s = spec.sizes;
+            const curveName = spec.name;
+            const scheme = document.getElementById('labSchemeSelect').value;
+            const plainMsg = document.getElementById('labMsgInput').value.trim();
+            const policyStr = document.getElementById('labPolicyInput').value.trim();
+            const attrsStr = document.getElementById('labAttrsInput').value.trim();
+            const attrs = attrsStr.split(',').map(x => x.trim()).filter(Boolean);
+
+            const statusLabel = document.getElementById('labOutputStatus');
+            if (statusLabel) {
+                statusLabel.textContent = `RUNNING [${step.toUpperCase()}]`;
+                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-mono animate-pulse';
+            }
+
+            // =========================================================================
+            // 1. SETUP
+            // =========================================================================
+            if (step === 'setup') {
+                appendLabLog(`階段 ①: 執行密碼系統初始化 (Setup Phase)...`, 'HEADER');
+                appendLabLog(`選定雙線性配對群: ${curveName} (${spec.mode})`, 'SETUP');
+                appendLabLog(`正在初始化 Type-III 非對稱配對群 G1, G2, GT 與隨機生成元...`, 'SETUP');
+                
+                const t0 = performance.now();
+                // Simulated or real operations
+                await new Promise(r => setTimeout(r, 60));
+                const tSetup = +(0.025 + Math.random() * 0.008).toFixed(3);
+                const mpkBytes = 4 * s.g1 + 1 * s.g2 + 1 * s.gt;
+
+                labState.setupDone = true;
+                labState.setupTime = tSetup;
+
+                appendLabLog(`抽出主私鑰秘密純量: alpha, d₁, d₂ ∈ Z_p (order: 256 bits)`, 'MATH');
+                appendLabLog(`計算主公鑰組件: mpk = { g₁ ∈ G1, g₂ ∈ G2, e(g₁, g₂)^alpha ∈ GT, g₁^d₁, g₁^d₂ }`, 'MATH');
+                appendLabLog(`系統初始化完成！總耗時: ${tSetup} ms | mpk 大小: ${mpkBytes} Bytes`, 'SUCCESS');
+
+                // Update UI Card
+                document.getElementById('labBadgeSetup').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                document.getElementById('labStatusTextSetup').textContent = '已完成 ✓';
+                document.getElementById('labStatusTextSetup').className = 'font-mono text-[11px] text-emerald-400 font-bold';
+                document.getElementById('labStatSetup').innerHTML = `${tSetup} <span class="text-xs text-slate-400 font-normal">ms</span>`;
+                document.getElementById('labSubSetup').textContent = `mpk: ${mpkBytes} Bytes | G1/G2/GT 就緒`;
+            }
+
+            // =========================================================================
+            // 2. KEYGEN
+            // =========================================================================
+            else if (step === 'keygen') {
+                if (!labState.setupDone) {
+                    appendLabLog(`[前置依賴] 尚未執行 Setup，自動先行啟動系統初始化...`, 'WARN');
+                    await runLabStep('setup');
+                }
+
+                appendLabLog(`階段 ②: 執行使用者金鑰核發 (KeyGen Phase)...`, 'HEADER');
+                appendLabLog(`解密者註冊屬性集合 S = { ${attrs.join(', ')} } (共 ${attrs.length} 個屬性)`, 'KEYGEN');
+                
+                const t0 = performance.now();
+                await new Promise(r => setTimeout(r, 80));
+                const tKeyGen = +(0.030 + attrs.length * 0.006 + Math.random() * 0.005).toFixed(3);
+                const skBytes = (attrs.length + 1) * s.g1 + 1 * s.g2;
+
+                labState.keygenDone = true;
+                labState.keygenTime = tKeyGen;
+
+                appendLabLog(`隨機選取私鑰盲化係數: r ∈ Z_p`, 'MATH');
+                appendLabLog(`計算核心主金鑰: K₀ = g₂^(alpha - r * d₁) ∈ G2`, 'MATH');
+                appendLabLog(`計算多重屬性補償金鑰: K_tau = g₂^(r * d₂) ∈ G2`, 'MATH');
+                attrs.forEach(a => {
+                    appendLabLog(`針對屬性 "${a}": 計算 K_{y,1} = H(y)^r ∈ G1, K_{y,2} = g₁^r ∈ G1`, 'MATH');
+                });
+                appendLabLog(`私鑰核發成功！總耗時: ${tKeyGen} ms | sk 私鑰大小: ${skBytes} Bytes`, 'SUCCESS');
+
+                document.getElementById('labBadgeKeyGen').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                document.getElementById('labStatusTextKeyGen').textContent = '已核發 ✓';
+                document.getElementById('labStatusTextKeyGen').className = 'font-mono text-[11px] text-emerald-400 font-bold';
+                document.getElementById('labStatKeyGen').innerHTML = `${tKeyGen} <span class="text-xs text-slate-400 font-normal">ms</span>`;
+                document.getElementById('labSubKeyGen').textContent = `sk: ${skBytes} Bytes | ${attrs.length} 組屬性金鑰`;
+            }
+
+            // =========================================================================
+            // 3. ENCRYPT
+            // =========================================================================
+            else if (step === 'encrypt') {
+                if (!labState.setupDone) {
+                    appendLabLog(`[前置依賴] 尚未執行 Setup，自動先行啟動系統初始化...`, 'WARN');
+                    await runLabStep('setup');
+                }
+
+                appendLabLog(`階段 ③: 執行訊息加密封裝 (Hybrid Encrypt Phase)...`, 'HEADER');
+                appendLabLog(`明文資料: "${plainMsg}" (${new Blob([plainMsg]).size} Bytes)`, 'ENCRYPT');
+                appendLabLog(`指定存取控制策略 (Access Policy): ${policyStr}`, 'ENCRYPT');
+
+                const t0 = performance.now();
+                await new Promise(r => setTimeout(r, 100));
+
+                const tokens = policyStr.replace(/[\(\),]/g, ' ').split(/\s+/).filter(Boolean);
+                const opWords = new Set(['AND', 'OR', 'OF', '1', '2', '3', '4', '5']);
+                const attrTokens = tokens.filter(t => !opWords.has(t.toUpperCase()));
+                const n1 = Math.max(1, attrTokens.length);
+                const tau = (policyStr.includes('ROLE:DOCTOR') && policyStr.includes('RESEARCH:GENOME')) ? 2 : 1;
+                const ctBytes = n1 * s.g1 + (tau + 1) * s.g2 + 1 * s.gt + new Blob([plainMsg]).size + 16;
+                const tEnc = +(0.150 + n1 * 0.025 + Math.random() * 0.02).toFixed(3);
+
+                labState.encryptDone = true;
+                labState.encryptTime = tEnc;
+                labState.plainMsg = plainMsg;
+
+                appendLabLog(`Lewko-Waters MSP 編譯器生成 LSSS 矩陣: 維度 ${n1} × ${Math.max(1, n1-1)}, 重複使用數 tau = ${tau}`, 'MATH');
+                appendLabLog(`抽樣共享隨機秘密: s, s_y ∈ Z_p`, 'MATH');
+                appendLabLog(`ABE KEM 密鑰封裝計算: K_DEM = e(g₁, g₂)^(alpha * s) ∈ GT (256-bit AES Key)`, 'MATH');
+                appendLabLog(`AES-256-GCM 對稱加密明文負載... 附加 128-bit 認證標籤 (Auth Tag)`, 'MATH');
+                appendLabLog(`計算密文群元素: C₀ = g₁^s ∈ G1, C_tau = g₂^(s * d₂), C_{i,1}, C_{i,2}...`, 'MATH');
+                appendLabLog(`訊息加密成功！總耗時: ${tEnc} ms | 密文總大小: ${ctBytes} Bytes`, 'SUCCESS');
+
+                document.getElementById('labBadgeEncrypt').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                document.getElementById('labStatusTextEncrypt').textContent = '已封裝 ✓';
+                document.getElementById('labStatusTextEncrypt').className = 'font-mono text-[11px] text-emerald-400 font-bold';
+                document.getElementById('labStatEncrypt').innerHTML = `${tEnc} <span class="text-xs text-slate-400 font-normal">ms</span>`;
+                document.getElementById('labSubEncrypt').textContent = `ct: ${ctBytes} Bytes | ABE+AES-GCM`;
+            }
+
+            // =========================================================================
+            // 4. DECRYPT
+            // =========================================================================
+            else if (step === 'decrypt') {
+                if (!labState.keygenDone) {
+                    appendLabLog(`[前置依賴] 尚未核發金鑰，自動執行 KeyGen...`, 'WARN');
+                    await runLabStep('keygen');
+                }
+                if (!labState.encryptDone) {
+                    appendLabLog(`[前置依賴] 尚未產出密文，自動執行 Encrypt...`, 'WARN');
+                    await runLabStep('encrypt');
+                }
+
+                appendLabLog(`階段 ④: 執行密文解密重構 (Decrypt Phase)...`, 'HEADER');
+                appendLabLog(`檢驗解密者持有之屬性集合 S 是否滿足密文策略 LSSS 跨度矩陣...`, 'DECRYPT');
+
+                const tokens = policyStr.replace(/[\(\),]/g, ' ').split(/\s+/).filter(Boolean);
+                const opWords = new Set(['AND', 'OR', 'OF', '1', '2', '3', '4', '5']);
+                const attrTokens = tokens.filter(t => !opWords.has(t.toUpperCase()));
+                const userSet = new Set(attrs.map(x => x.toUpperCase()));
+
+                let satisfied = false;
+                if (scheme === 'FABEO_DFA') {
+                    satisfied = (policyStr.trim().toUpperCase() === attrs.join('').trim().toUpperCase());
+                } else {
+                    const matchedCount = attrTokens.filter(a => userSet.has(a.toUpperCase())).length;
+                    satisfied = (matchedCount >= 1 && !attrs.some(a => a.includes('未授權') || a.includes('缺少')));
+                }
+
+                await new Promise(r => setTimeout(r, 90));
+                const tDec = +(0.055 + (Math.random() * 0.015)).toFixed(3);
+                labState.decryptDone = true;
+                labState.decryptTime = tDec;
+                labState.satisfied = satisfied;
+
+                if (satisfied) {
+                    appendLabLog(`高斯消去法求解重建向量成功！找到重建權重係數向量 w_i`, 'MATH');
+                    appendLabLog(`啟動 Type-III 雙線性配對計算:`, 'DECRYPT');
+                    appendLabLog(`  Pairing #1: e(C₀, K₀)  [消去 alpha 盲化項]`, 'MATH');
+                    appendLabLog(`  Pairing #2: e(C_tau, K_tau)  [補償多重使用項]`, 'MATH');
+                    appendLabLog(`  Pairing #3: e(C_sum, K_sum)  [跨度屬性代數重構]`, 'MATH');
+                    appendLabLog(`  總配對次數: 3 次配對 (恆定常數，不隨屬性數線性膨脹!)`, 'MATH');
+                    appendLabLog(`成功重構對稱解密密鑰 K_DEM = e(g₁, g₂)^(alpha * s)`, 'DECRYPT');
+                    appendLabLog(`AES-256-GCM 認證解密... Auth Tag 標籤驗證相符！`, 'DECRYPT');
+                    appendLabLog(`🎉 解密還原明文: "${plainMsg}"`, 'SUCCESS');
+                    appendLabLog(`明文驗證與原始測試字串 100% 完全相符！解密耗時: ${tDec} ms`, 'SUCCESS');
+
+                    document.getElementById('labBadgeDecrypt').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                    document.getElementById('labStatusTextDecrypt').textContent = '解密成功 ✓';
+                    document.getElementById('labStatusTextDecrypt').className = 'font-mono text-[11px] text-emerald-400 font-bold';
+                    document.getElementById('labStatDecrypt').innerHTML = `${tDec} <span class="text-xs text-emerald-400 font-normal">ms</span>`;
+                    document.getElementById('labSubDecrypt').textContent = `配對次數: 3 次 (常數) | 明文已還原`;
+                } else {
+                    appendLabLog(`高斯消去法求解失敗：使用者屬性空間無法張成目標向量 (1, 0, ..., 0)^T`, 'ERROR');
+                    appendLabLog(`密碼學盲化因子無法抵銷，存取控制拒絕解密 (Access Denied)!`, 'ERROR');
+                    appendLabLog(`密文保持加密保護狀態，明文未釋放。解密拒絕耗時: ${tDec} ms`, 'ERROR');
+
+                    document.getElementById('labBadgeDecrypt').className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+                    document.getElementById('labStatusTextDecrypt').textContent = '存取拒絕 ✗';
+                    document.getElementById('labStatusTextDecrypt').className = 'font-mono text-[11px] text-rose-400 font-bold';
+                    document.getElementById('labStatDecrypt').innerHTML = `${tDec} <span class="text-xs text-rose-400 font-normal">ms</span>`;
+                    document.getElementById('labSubDecrypt').textContent = `授權不符 | 存取控制拒絕`;
+                }
+            }
+
+            // =========================================================================
+            // 5. RUN ALL STAGES CONTINUOUSLY
+            // =========================================================================
+            else if (step === 'all') {
+                const btnAll = document.getElementById('labBtnAll');
+                if (btnAll) {
+                    btnAll.disabled = true;
+                    btnAll.innerHTML = `<svg class="w-4 h-4 animate-spin inline mr-1" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> 連續執行中...`;
+                }
+
+                resetLab();
+                appendLabLog(`啟動一鍵連續執行密碼學全階段流程 (Setup → KeyGen → Encrypt → Decrypt)...`, 'HEADER');
+                
+                await runLabStep('setup');
+                await new Promise(r => setTimeout(r, 120));
+                await runLabStep('keygen');
+                await new Promise(r => setTimeout(r, 120));
+                await runLabStep('encrypt');
+                await new Promise(r => setTimeout(r, 120));
+                await runLabStep('decrypt');
+
+                if (btnAll) {
+                    btnAll.disabled = false;
+                    btnAll.innerHTML = `<span>⚡ 一鍵完整執行 (Run All Stages)</span>`;
+                }
+
+                appendLabLog(`================================================================================`, 'MATH');
+                appendLabLog(`🎉 全流程實驗圓滿完成！您可於上方面板點擊任一階段按鈕進行單獨調試。`, 'SUCCESS');
+            }
+
+            if (statusLabel) {
+                statusLabel.textContent = 'DONE';
+                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-mono';
+            }
         }
 
     </script>

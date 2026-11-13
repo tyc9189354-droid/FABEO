@@ -117,6 +117,7 @@ python3 main.py web --port 8080
 > - **儲存與頻寬成本評估 (Storage Cost)**：支援 **BLS12-381 / BN254 / MNT224** 雙線性配對曲線與點壓縮切換，自動換算私鑰與密文之實體位元組 (Bytes / KB) 及空間節省百分比。
 > - **自訂策略即時試算機 (Policy Calculator)**：即時解析單調布林存取控制策略（MSP 矩陣、$\tau$ 參數、滿足性），即刻試算各方案開銷對比。
 > - **本機即時跑分 (Live Benchmark)**：直接從網頁點擊觸發密碼學跑分與即時加解密實體驗證，支援本機 Python 與純前端雙引擎。
+> - **密碼學分步實驗室 (Step Lab)**：提供獨立階段按鈕分別觸發 Setup（初始化）、KeyGen（金鑰核發）、Encrypt（訊息加密）、Decrypt（密文解密），並於專屬即時 OutputBox 監控運算歷程與代數群元素轉換。
 > - **離線獨立運行**：亦可直接用瀏覽器開啟 `web/index.html`，內建完整預載資料集與前端離線試算模組。
 > - **GitHub Pages 線上預覽**：支援透過 GitHub Actions 自動發布至 GitHub Pages 線上網站。
 
