@@ -12,11 +12,21 @@ import os
 import argparse
 from typing import List
 
-# Ensure parent directory is in sys.path
+# Ensure parent directory and current directory are in sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(SCRIPT_DIR)
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+# Ensure FABEO package resolves properly in standalone execution
+if "FABEO" not in sys.modules:
+    import types
+    pkg = types.ModuleType("FABEO")
+    pkg.__path__ = [SCRIPT_DIR]
+    pkg.__file__ = os.path.join(SCRIPT_DIR, "__init__.py")
+    sys.modules["FABEO"] = pkg
 
 from FABEO.core.pairing_group import PairingGroup
 from FABEO.core.msp import MSP, PolicyParser
@@ -157,6 +167,12 @@ def cmd_test(args):
         sys.exit(1)
 
 
+def cmd_web(args):
+    """Launch the Web Evaluation Dashboard Server."""
+    from web_server import start_server
+    start_server(port=args.port)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="FABEO: Fast Attribute-Based Encryption with Optimal Security (CCS 2022)"
@@ -176,6 +192,11 @@ def main():
     # test
     p_test = subparsers.add_parser("test", help="Run unit test suite")
     p_test.set_defaults(func=cmd_test)
+
+    # web
+    p_web = subparsers.add_parser("web", help="Start web evaluation dashboard server")
+    p_web.add_argument("--port", type=int, default=8080, help="Web server port (default: 8080)")
+    p_web.set_defaults(func=cmd_web)
 
     args = parser.parse_args()
     if not args.subcommand:

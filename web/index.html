@@ -1,0 +1,2757 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FABEO: Computational & Storage Cost Evaluator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            900: '#4c1d95',
+                        },
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            hover: '#2d3748'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        code, pre, .font-mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+        .stat-glow {
+            text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-slate-800 bg-slate-950/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                    <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-purple-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">
+                            FABEO Cost Evaluator
+                        </span>
+                        <span class="px-2 py-0.5 text-xs font-semibold bg-brand-900/60 text-brand-300 border border-brand-700/50 rounded-full">
+                            ACM CCS 2022
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Computational & Storage Complexity Evaluation Framework</p>
+                </div>
+            </div>
+
+            <!-- Global Curve & Server Status Controls -->
+            <div class="flex items-center space-x-3 text-xs sm:text-sm">
+                <div class="flex items-center space-x-2 bg-slate-900 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
+                    <span class="text-slate-400">雙線性配對群:</span>
+                    <select id="globalCurveSelect" onchange="updateCurveSettings()" class="bg-transparent text-purple-300 font-mono font-medium focus:outline-none cursor-pointer">
+                        <option value="BLS12-381" class="bg-slate-900">BLS12-381 (128-bit)</option>
+                        <option value="BN254" class="bg-slate-900">BN254 (100-bit)</option>
+                        <option value="MNT224" class="bg-slate-900">MNT224 (96-bit Paper)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-slate-900 border border-slate-700/60 rounded-lg px-2.5 py-1.5">
+                    <span class="text-slate-400">壓縮模式:</span>
+                    <select id="compressionSelect" onchange="updateCurveSettings()" class="bg-transparent text-emerald-300 font-mono font-medium focus:outline-none cursor-pointer">
+                        <option value="compressed" class="bg-slate-900">Compressed</option>
+                        <option value="uncompressed" class="bg-slate-900">Uncompressed</option>
+                    </select>
+                </div>
+
+                <div id="serverStatusBadge" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium text-xs">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="serverStatusText">檢測中...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="border-b border-slate-800/80 bg-slate-900/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 sm:space-x-4 overflow-x-auto py-2">
+            <button onclick="switchTab('overview')" id="tab-btn-overview" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition-all text-purple-300 bg-brand-900/40 border border-brand-500/40 shadow-sm">
+                📌 總覽與理論對照 (Overview)
+            </button>
+            <button onclick="switchTab('computation')" id="tab-btn-computation" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                ⚡ 計算成本評估 (Computational)
+            </button>
+            <button onclick="switchTab('storage')" id="tab-btn-storage" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                💾 儲存與通訊成本 (Storage)
+            </button>
+            <button onclick="switchTab('calculator')" id="tab-btn-calculator" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                🧮 自訂策略試算 (Policy Calc)
+            </button>
+            <button onclick="switchTab('benchmark')" id="tab-btn-benchmark" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                🚀 即時跑分評測 (Live Benchmark)
+            </button>
+            <button onclick="switchTab('tree_cost')" id="tab-btn-tree_cost" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                🌲 專案架構與 Tree 成本 (Tree Cost)
+            </button>
+        </div>
+    </nav>
+
+    <!-- Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 1: OVERVIEW & THEORETICAL COMPARISON -->
+        <!-- ========================================================================================= -->
+        <section id="tab-overview" class="space-y-6">
+            <!-- Hero Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">極速解密配對次數</div>
+                    <div class="text-3xl font-extrabold text-white stat-glow flex items-baseline space-x-2">
+                        <span>3 次配對</span>
+                        <span class="text-xs font-normal text-emerald-400 font-mono">(&tau;=1 恆定常數)</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        相比 BSW (201 次 @ N=100) 減少 <strong class="text-emerald-400">98.5%</strong> 配對運算
+                    </p>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-1">私鑰儲存節省</div>
+                    <div class="text-3xl font-extrabold text-white stat-glow flex items-baseline space-x-2">
+                        <span>~50% 體積縮減</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        私鑰僅需 <code class="text-indigo-300 font-mono">(m+1)G1 + 1G2</code>，節省一半傳輸頻寬
+                    </p>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1">密文儲存節省</div>
+                    <div class="text-3xl font-extrabold text-white stat-glow flex items-baseline space-x-2">
+                        <span>~66% 體積縮減</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        密文僅需 <code class="text-emerald-300 font-mono">n1 G1 + 2 G2</code>，對比 FAME/ABGW 大幅瘦身
+                    </p>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1">最高等級安全界線</div>
+                    <div class="text-3xl font-extrabold text-white stat-glow flex items-baseline space-x-2 font-mono">
+                        <span>O(t²/p)</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2">
+                        通用群模型 (GGM) 下首創最優自適應緊緻多密文安全性
+                    </p>
+                </div>
+            </div>
+
+            <!-- Academic Comparison Table (Replicating Paper Table 1 & Table 3) -->
+            <div class="glass-panel rounded-2xl p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/60 pb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <span>📚 跨論文 ABE 方案核心特徵綜合對比</span>
+                            <span class="text-xs text-slate-400 font-normal font-mono">(ACM CCS 2022 Table 1 & 3)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">針對表達力、屬性重複使用 (&tau;)、解密配對次數、私鑰與密文大小之理論對比</p>
+                    </div>
+                    <div class="text-xs text-slate-400">
+                        註：<span class="text-purple-300">m</span> = 屬性數，<span class="text-purple-300">n₁</span> = 策略行數，<span class="text-purple-300">I</span> = 滿足子集大小
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300 border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 bg-slate-900/60 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                <th class="py-3 px-4">方案 (Scheme)</th>
+                                <th class="py-3 px-4 text-center">無限制策略</th>
+                                <th class="py-3 px-4 text-center">任意字串屬性</th>
+                                <th class="py-3 px-4 text-center">快速常數解密</th>
+                                <th class="py-3 px-4 text-center">屬性重複使用 (&tau;)</th>
+                                <th class="py-3 px-4 text-center">CP 解密配對次數</th>
+                                <th class="py-3 px-4 text-center">CP 私鑰元素 (|sk|)</th>
+                                <th class="py-3 px-4 text-center">CP 密文元素 (|ct|)</th>
+                                <th class="py-3 px-4 text-center">多密文安全界線</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800 font-mono text-xs">
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="py-3 px-4 font-bold text-slate-300">BSW [S&P '07]</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-rose-400">✗</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-rose-400 font-bold">2|I| + 1</td>
+                                <td class="py-3 px-4 text-center">(m+1)G₁ + m G₂</td>
+                                <td class="py-3 px-4 text-center">n₁ G₁ + (n₁+1) G₂ + 1 G_T</td>
+                                <td class="py-3 px-4 text-center">O(t³/p)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="py-3 px-4 font-bold text-slate-300">ABGW [CCS '17]</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-rose-400">✗</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-amber-400 font-bold">|I| + 2</td>
+                                <td class="py-3 px-4 text-center">0 G₁ + (m+2) G₂</td>
+                                <td class="py-3 px-4 text-center text-rose-400 font-bold">3n₁ G₁ + 0 G₂ + 1 G_T</td>
+                                <td class="py-3 px-4 text-center">O(t⁴/p)</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="py-3 px-4 font-bold text-slate-300">FAME [CCS '17]</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400">✓</td>
+                                <td class="py-3 px-4 text-center text-rose-400">✗ (&tau;=1)</td>
+                                <td class="py-3 px-4 text-center text-emerald-400 font-bold">6</td>
+                                <td class="py-3 px-4 text-center text-rose-400">(3m+3) G₁ + 3 G₂</td>
+                                <td class="py-3 px-4 text-center text-rose-400">3n₁ G₁ + 3 G₂ + 1 G_T</td>
+                                <td class="py-3 px-4 text-center">O(t⁴/p)</td>
+                            </tr>
+                            <tr class="bg-brand-900/30 border-l-4 border-brand-500 hover:bg-brand-900/40">
+                                <td class="py-3.5 px-4 font-bold text-purple-300 flex items-center space-x-1">
+                                    <span>🌟 FABEO (Ours)</span>
+                                </td>
+                                <td class="py-3 px-4 text-center text-emerald-400 font-bold">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400 font-bold">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400 font-bold">✓</td>
+                                <td class="py-3 px-4 text-center text-emerald-400 font-bold">✓ (任意 &tau;)</td>
+                                <td class="py-3 px-4 text-center text-emerald-300 font-bold text-sm bg-brand-500/20 rounded">
+                                    &tau; + 2 (常數 3)
+                                </td>
+                                <td class="py-3 px-4 text-center text-emerald-300 font-bold">(m+1) G₁ + 1 G₂</td>
+                                <td class="py-3 px-4 text-center text-emerald-300 font-bold">n₁ G₁ + 2 G₂ + 1 G_T</td>
+                                <td class="py-3 px-4 text-center text-emerald-400 font-bold">O(t²/p) [Optimal]</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Highlights Carousel / Feature Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">1</div>
+                    <h3 class="text-base font-semibold text-white">隨機數複用 (Randomness Reuse)</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        FABEO 巧妙在密文生成中將群元素與隨機數進行綁定複用，使解密方能夠在群 $G_1$ 內完成所有策略屬性的線性組合縮聚，最終僅需進行常數次的雙線性配對，達成計算效能的最佳化。
+                    </p>
+                </div>
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">2</div>
+                    <h3 class="text-base font-semibold text-white">任意屬性重複使用 (&tau; &ge; 1)</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        相較於 FAME 限制每個屬性在策略公式中僅能出現一次，FABEO 完整支援任意次數重複使用（例如 <code class="text-indigo-300 font-mono">(A AND B) OR (A AND C)</code>），解密配對次數僅增加為 $	au+2$，仍極度高效。
+                    </p>
+                </div>
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">3</div>
+                    <h3 class="text-base font-semibold text-white">精簡群元素序列化 (Compact Storage)</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        在 Type-III 配對群 ($G_1 
+e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私鑰中僅需單個 $G_2$ 元素，密文僅需 2 個 $G_2$ 元素，在物聯網與雲端儲存場景具備顯著優勢。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 2: COMPUTATIONAL COST EVALUATION -->
+        <!-- ========================================================================================= -->
+        <section id="tab-computation" class="hidden space-y-6">
+            <!-- Header & Filter -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-panel p-4 rounded-xl">
+                <div>
+                    <h2 class="text-base font-bold text-white">⚡ 計算複雜度與耗時評估 (Computational Complexity)</h2>
+                    <p class="text-xs text-slate-400">評估解密 (Decrypt)、加密 (Encrypt)、金鑰生成 (KeyGen) 與配對運算次數 (Pairings)</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-400">方案過濾:</span>
+                    <button onclick="toggleSchemeFilter('all')" class="filter-btn px-2.5 py-1 text-xs rounded bg-purple-600 text-white font-medium">全部</button>
+                    <button onclick="toggleSchemeFilter('cp')" class="filter-btn px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700">CP-ABE</button>
+                    <button onclick="toggleSchemeFilter('kp')" class="filter-btn px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700">KP-ABE</button>
+                </div>
+            </div>
+
+            <!-- Primary Charts: Decryption Time & Pairings Count -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Decryption Time Chart -->
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">解密執行時間 vs 屬性數 (Decryption Latency)</h3>
+                            <p class="text-xs text-slate-400">單位：毫秒 (ms)，數值越小越快</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs rounded bg-brand-500/20 text-brand-300 font-mono">Figure 3(c)</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="decryptionTimeChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        💡 <strong class="text-purple-300">FABEO 解密優勢：</strong>隨著屬性數從 10 增加到 100，FABEO 的解密時間增長極為平緩，而 BSW 呈爆炸性線性上升。
+                    </p>
+                </div>
+
+                <!-- Bilinear Pairings Count Chart -->
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">雙線性配對次數 vs 屬性數 (Pairings Count)</h3>
+                            <p class="text-xs text-slate-400">雙線性配對為密碼學中最昂貴之運算 (約 2-5ms/次)</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs rounded bg-emerald-500/20 text-emerald-300 font-mono">常數 3 次優勢</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="pairingsCountChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        💡 <strong class="text-emerald-400">核心突破：</strong>FABEO CP 在 &tau;=1 時僅固定執行 <strong class="text-white">3 次配對</strong>，相比 BSW 在 100 個屬性時需要 <strong class="text-rose-400">201 次配對</strong>！
+                    </p>
+                </div>
+            </div>
+
+            <!-- Secondary Charts: KeyGen & Encryption Latency -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">加密時間 vs 屬性數 (Encryption Time)</h3>
+                            <p class="text-xs text-slate-400">單位：毫秒 (ms)</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs rounded bg-indigo-500/20 text-indigo-300 font-mono">Figure 3(b)</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="encryptionTimeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">金鑰生成時間 vs 屬性數 (KeyGen Time)</h3>
+                            <p class="text-xs text-slate-400">單位：毫秒 (ms)</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs rounded bg-amber-500/20 text-amber-300 font-mono">Figure 3(a)</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="keygenTimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group Operations Breakdown Table -->
+            <div class="glass-panel rounded-2xl p-6 space-y-4">
+                <h3 class="text-sm font-bold text-white flex items-center justify-between">
+                    <span>🔬 底層群運算計數詳細清單 (Group Operations Breakdown @ N=100)</span>
+                    <span class="text-xs text-slate-400 font-mono font-normal">G1/G2/GT Exp, Mul, Hash & Pairings</span>
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 bg-slate-900/60 font-semibold text-slate-400">
+                                <th class="py-2.5 px-3">方案</th>
+                                <th class="py-2.5 px-3">屬性數 N</th>
+                                <th class="py-2.5 px-3 text-right">G1 Exp</th>
+                                <th class="py-2.5 px-3 text-right">G1 Mul</th>
+                                <th class="py-2.5 px-3 text-right">G1 Hash</th>
+                                <th class="py-2.5 px-3 text-right">G2 Exp</th>
+                                <th class="py-2.5 px-3 text-right">GT Exp</th>
+                                <th class="py-2.5 px-3 text-right text-purple-300 font-bold">解密配對次數 (Pairings)</th>
+                                <th class="py-2.5 px-3 text-right text-emerald-300 font-bold">解密耗時 (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="groupOpsTableBody" class="divide-y divide-slate-800 font-mono">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 3: STORAGE COST EVALUATION -->
+        <!-- ========================================================================================= -->
+        <section id="tab-storage" class="hidden space-y-6">
+            <!-- Curve Selector & Info Banner -->
+            <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-white">💾 儲存與通訊大小評估 (Storage & Bandwidth Evaluation)</h2>
+                    <p class="text-xs text-slate-400">實體位元組大小會根據雙線性曲線參數 (BLS12-381 / BN254 / MNT224) 及點壓縮模式即時重算</p>
+                </div>
+                <div class="flex items-center space-x-3 text-xs">
+                    <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/80 font-mono">
+                        <span class="text-slate-400">目前曲線規格: </span>
+                        <span id="curveParamInfo" class="text-purple-300 font-semibold">BLS12-381 (G1: 48B, G2: 96B, GT: 288B)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts: Key Size & Ciphertext Size -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Secret Key Size Chart -->
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">使用者私鑰大小 vs 屬性數 (|sk| Storage)</h3>
+                            <p class="text-xs text-slate-400">單位：千位元組 (KB)</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-300 font-mono">Table 3</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="skSizeChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        💡 <strong class="text-purple-300">私鑰節省率：</strong>FABEO 的私鑰僅包含 <code class="text-purple-200 font-mono">(m+1) G1 + 1 G2</code>，相較於 BSW 的 <code class="text-slate-300 font-mono">(m+1) G1 + m G2</code>，因為 G2 元素體積為 G1 的 2 倍，FABEO 省去了大量昂貴的 G2 儲存！
+                    </p>
+                </div>
+
+                <!-- Ciphertext Size Chart -->
+                <div class="glass-panel p-5 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">密文大小 vs 策略屬性數 (|ct| Bandwidth)</h3>
+                            <p class="text-xs text-slate-400">單位：千位元組 (KB)</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-xs rounded bg-emerald-500/20 text-emerald-300 font-mono">Table 5</span>
+                    </div>
+                    <div class="h-64 sm:h-72">
+                        <canvas id="ctSizeChart"></canvas>
+                    </div>
+                    <p class="text-xs text-slate-400">
+                        💡 <strong class="text-emerald-400">密文節省率：</strong>FABEO 密文只需 <code class="text-emerald-300 font-mono">n1 G1 + 2 G2 + 1 GT</code>，而 ABGW 與 FAME 均需要 <strong class="text-rose-400">3n1 G1</strong>，密文體積直接縮減 <strong class="text-emerald-300">~66%</strong>。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Detailed Size Comparison Table -->
+            <div class="glass-panel rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                    <h3 class="text-sm font-bold text-white">📦 實體儲存空間節省比例分析 (N = 10, 20, 50, 100)</h3>
+                    <span class="text-xs text-slate-400 font-mono">自動隨曲線規格即時計算</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 bg-slate-900/60 font-semibold text-slate-400">
+                                <th class="py-2.5 px-3">方案 (Scheme)</th>
+                                <th class="py-2.5 px-3 text-center">屬性數 (N)</th>
+                                <th class="py-2.5 px-3 text-center">私鑰元素組成</th>
+                                <th class="py-2.5 px-3 text-right">私鑰實體大小 (Bytes)</th>
+                                <th class="py-2.5 px-3 text-center">密文元素組成</th>
+                                <th class="py-2.5 px-3 text-right">密文實體大小 (Bytes)</th>
+                                <th class="py-2.5 px-3 text-right text-emerald-400 font-bold">密文空間節省率 vs ABGW</th>
+                            </tr>
+                        </thead>
+                        <tbody id="storageTableBody" class="divide-y divide-slate-800 font-mono">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 4: INTERACTIVE POLICY COST CALCULATOR -->
+        <!-- ========================================================================================= -->
+        <section id="tab-calculator" class="hidden space-y-6">
+            <div class="glass-panel p-5 rounded-2xl space-y-4">
+                <div>
+                    <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                        <span>🧮 自訂存取控制策略 (Access Policy) 成本即時試算機</span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 font-mono">MSP Compiler</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">
+                        輸入任意單調布林公式（支援 AND、OR、括號與 k-of-n 門閘），系統將使用 Lewko-Waters MSP 編譯器解析策略維度、屬性重複使用數 (&tau;)、是否合法滿足，並即刻輸出跨方案之儲存與計算開銷對比！
+                    </p>
+                </div>
+
+                <!-- Policy Input & Presets -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">存取策略公式 (Access Policy):</label>
+                        <input type="text" id="calcPolicyInput" value="(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:CHIEF_OF_MEDICINE"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-purple-200 focus:outline-none focus:border-brand-500 transition-all"
+                            placeholder="例: (A AND B) OR (A AND C)" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-300">快速載入預設場景範本:</label>
+                        <select id="calcPresetSelect" onchange="loadPresetPolicy()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-brand-500 cursor-pointer">
+                            <option value="medical">🏥 醫療機密病歷 (AND / OR 複合)</option>
+                            <option value="multi_use">🔄 屬性重複使用 Multi-Use (&tau;=2)</option>
+                            <option value="enterprise">🏢 企業雲端權限 (RBAC 巢狀)</option>
+                            <option value="threshold">🛡️ 門檻控制 (2 OF 4 Threshold)</option>
+                            <option value="large">🌐 大規模物聯網 (8 屬性子句)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Attributes Input -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-semibold text-slate-300">解密者持有的屬性集合 (User Attributes, 逗號分隔):</label>
+                    <input type="text" id="calcAttributesInput" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY"
+                        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-emerald-200 focus:outline-none focus:border-brand-500 transition-all"
+                        placeholder="例: ATTR_A, ATTR_B" />
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <div class="flex items-center space-x-2 text-xs text-slate-400">
+                        <span>目前評估雙線性曲線: <strong id="calcCurveLabel" class="text-purple-300 font-mono">BLS12-381 (Compressed)</strong></span>
+                    </div>
+                    <button onclick="evaluatePolicyInteractive()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-lg shadow-brand-500/25 transition-all flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span>立即評估開銷 (Evaluate Costs)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Calculation Results Cards -->
+            <div id="calcResultsSection" class="space-y-6">
+                <!-- Status & MSP Info Bar -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-panel p-4 rounded-xl flex items-center justify-between">
+                        <div>
+                            <div class="text-xs text-slate-400">存取授權判定</div>
+                            <div id="calcAuthStatus" class="text-lg font-bold text-emerald-400 flex items-center space-x-1.5 mt-0.5">
+                                <span>✓ 合法授權解密</span>
+                            </div>
+                        </div>
+                        <span id="calcAuthBadge" class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-xl">
+                        <div class="text-xs text-slate-400">MSP 矩陣維度 (n₁ × n₂)</div>
+                        <div id="calcMspDim" class="text-lg font-bold text-white font-mono mt-0.5">2 × 2</div>
+                        <div class="text-xs text-slate-400 mt-1">策略子句數: <span id="calcClauseCount" class="text-purple-300 font-mono">2</span></div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-xl">
+                        <div class="text-xs text-slate-400">屬性重複使用數 (&tau;)</div>
+                        <div id="calcTauVal" class="text-lg font-bold text-indigo-300 font-mono mt-0.5">1</div>
+                        <div class="text-xs text-slate-400 mt-1">FABEO 配對次數: <span id="calcFabeoPairings" class="text-emerald-300 font-mono font-bold">3 次</span></div>
+                    </div>
+
+                    <div class="glass-panel p-4 rounded-xl">
+                        <div class="text-xs text-slate-400">矩陣求解耗時 (Gaussian)</div>
+                        <div id="calcSolveTime" class="text-lg font-bold text-amber-300 font-mono mt-0.5">0.05 ms</div>
+                        <div class="text-xs text-slate-400 mt-1">滿足子集行數: <span id="calcUsedRows" class="text-slate-300 font-mono">2 行</span></div>
+                    </div>
+                </div>
+
+                <!-- Detailed Scheme Comparison Table for This Policy -->
+                <div class="glass-panel rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                            <span>📊 此策略下各方案計算與儲存開銷對比表</span>
+                        </h3>
+                        <span class="text-xs text-slate-400">即時演算結果</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-700 bg-slate-900/60 font-semibold text-slate-400">
+                                    <th class="py-3 px-3">方案 (Scheme)</th>
+                                    <th class="py-3 px-3 text-center text-purple-300 font-bold">解密配對次數</th>
+                                    <th class="py-3 px-3 text-center">配對次數計算公式</th>
+                                    <th class="py-3 px-3 text-center">私鑰元素組成</th>
+                                    <th class="py-3 px-3 text-right">私鑰大小 (Bytes)</th>
+                                    <th class="py-3 px-3 text-center">密文元素組成</th>
+                                    <th class="py-3 px-3 text-right">密文大小 (Bytes)</th>
+                                    <th class="py-3 px-3 text-center">安全性階層</th>
+                                </tr>
+                            </thead>
+                            <tbody id="calcComparisonTableBody" class="divide-y divide-slate-800 font-mono">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        
+
+        <!-- ========================================================================================= -->
+        <!-- TAB 5: LIVE BENCHMARK & DFA EVALUATION -->
+        <!-- ========================================================================================= -->
+        <section id="tab-benchmark" class="hidden space-y-6">
+            <!-- Benchmark Runner Controls -->
+            <div class="glass-panel p-5 rounded-2xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
+                            <span>🚀 本機即時密碼學基準測試執行器 (Live Benchmark Runner)</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            可直接於本機 CPU 執行實際密碼學加解密與配對測試，並即時將數據回填更新至圖表中
+                        </p>
+                    </div>
+
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2 text-xs bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5">
+                            <span class="text-slate-400">重複測試次數:</span>
+                            <input type="number" id="benchTrialsInput" value="1" min="1" max="10" class="w-12 bg-transparent text-white font-mono text-center focus:outline-none" />
+                        </div>
+
+                        <button id="runBenchmarkBtn" onclick="runLiveBenchmark()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center space-x-2">
+                            <svg id="benchSpinner" class="w-4 h-4 hidden animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span id="benchBtnText">開始執行跑分 (Run Now)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Attribute sizes checkboxes -->
+                <div class="flex items-center space-x-4 text-xs">
+                    <span class="text-slate-400 font-semibold">測試屬性規模:</span>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" name="benchAttr" value="10" checked class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                        <span class="font-mono text-slate-300">10 屬性</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" name="benchAttr" value="20" checked class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                        <span class="font-mono text-slate-300">20 屬性</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" name="benchAttr" value="50" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                        <span class="font-mono text-slate-300">50 屬性</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" name="benchAttr" value="100" class="rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                        <span class="font-mono text-slate-300">100 屬性</span>
+                    </label>
+                </div>
+
+                <!-- Console Output Window -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-400">
+                        <span>即時終端輸出日誌 (Live Output Log):</span>
+                        <span id="benchLogStatus" class="font-mono text-slate-500">待命中</span>
+                    </div>
+                    <pre id="benchConsoleLog" class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-300 h-44 overflow-y-auto leading-relaxed">System ready. Click "開始執行跑分" to start live cryptographic benchmarking.</pre>
+                </div>
+            </div>
+
+            <!-- DFA Evaluation Section -->
+            <div class="glass-panel p-5 rounded-2xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                            <span>🧬 FABEO DFA KP-ABE 正規語言狀態機評測 (Figure 4)</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">針對任意長度正規字串 ($x \in \Sigma^*$) 進行路徑追蹤加解密效能評估</p>
+                    </div>
+                    <span class="px-2 py-0.5 text-xs rounded bg-purple-500/20 text-purple-300 font-mono">DFA Engine</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="h-64 sm:h-72">
+                        <canvas id="dfaChart"></canvas>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-700 bg-slate-900/60 font-semibold text-slate-400">
+                                    <th class="py-2 px-3">字串長度 (|x|)</th>
+                                    <th class="py-2 px-3 text-right">Setup (ms)</th>
+                                    <th class="py-2 px-3 text-right">KeyGen (ms)</th>
+                                    <th class="py-2 px-3 text-right">Encrypt (ms)</th>
+                                    <th class="py-2 px-3 text-right text-emerald-400 font-bold">Decrypt (ms)</th>
+                                    <th class="py-2 px-3 text-right text-purple-300 font-bold">配對次數</th>
+                                    <th class="py-2 px-3 text-center">驗證結果</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dfaTableBody" class="divide-y divide-slate-800 font-mono">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        
+
+    <!-- ========================================================================================= -->
+        <!-- TAB 6: PROJECT STRUCTURE & TREE COMPUTATIONAL COST -->
+        <!-- ========================================================================================= -->
+        <section id="tab-tree_cost" class="hidden space-y-6">
+            <!-- Top Banner -->
+            <div class="glass-panel rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-6 border border-slate-700/60 shadow-xl">
+                <div class="space-y-1.5 max-w-xl">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                            Tree Computational Cost
+                        </span>
+                        <span class="text-xs text-slate-400">實機硬體量測 (Darwin arm64)</span>
+                    </div>
+                    <h2 class="text-2xl font-extrabold text-white">專案檔案樹與遍歷運算開銷分析</h2>
+                    <p class="text-sm text-slate-400">
+                        即時評估檔案系統目錄走訪（Directory Tree Walk）、系統調用（<code>stat</code> / <code>getdents</code>）、CPU 空間劃分與記憶體駐留集的精準開銷。亦可直接存取 <a href="tree_cost.html" target="_blank" class="text-purple-400 underline hover:text-purple-300">獨立分頁版本 &rarr;</a>
+                    </p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div class="inline-flex p-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-medium">
+                        <button id="tab6-btn-clean" onclick="setTreeCostMode('clean')" class="px-3.5 py-2 rounded-lg bg-brand-900/50 text-purple-300 border border-brand-500/40 shadow-sm transition-all">
+                            標準模式 (38 檔案 / 7 目錄)
+                        </button>
+                        <button id="tab6-btn-full" onclick="setTreeCostMode('full')" class="px-3.5 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-all">
+                            全量模式 (132 檔案 / 69 目錄)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <span>總執行時間 (Wall Time)</span>
+                        <span>⏱️</span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white font-mono" id="t6-val-wall">
+                        0.570 <span class="text-sm font-normal text-slate-400">ms</span>
+                    </div>
+                    <div class="text-xs text-emerald-400 font-mono mt-1" id="t6-sub-wall">約 570 微秒 (μs)</div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <span>CPU 運算時間 (Total)</span>
+                        <span>💻</span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white font-mono" id="t6-val-cpu">
+                        0.568 <span class="text-sm font-normal text-slate-400">ms</span>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono mt-1" id="t6-sub-cpu">User: 0.17ms | Sys: 0.40ms</div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <span>記憶體常駐尖峰 (Peak RSS)</span>
+                        <span>🧠</span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white font-mono" id="t6-val-rss">
+                        9.39 <span class="text-sm font-normal text-slate-400">MB</span>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono mt-1" id="t6-sub-rss">走訪緩衝: ~42 KB</div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
+                    <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1 flex justify-between items-center">
+                        <span>掃描節點數 (I/O Nodes)</span>
+                        <span>📂</span>
+                    </div>
+                    <div class="text-3xl font-extrabold text-white font-mono" id="t6-val-nodes">
+                        45 <span class="text-sm font-normal text-slate-400">節點</span>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono mt-1" id="t6-sub-nodes">7 目錄 / 38 檔案</div>
+                </div>
+            </div>
+
+            <!-- Detailed Analysis Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- User vs Kernel Latency -->
+                <div class="glass-panel p-6 rounded-2xl space-y-5 border border-slate-700/60">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></span>
+                            <h3 class="font-bold text-white text-base">時間分佈與系統調用開銷</h3>
+                        </div>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            User vs Kernel Syscall
+                        </span>
+                    </div>
+
+                    <div class="space-y-4 text-xs">
+                        <div>
+                            <div class="flex justify-between mb-1.5 text-slate-300">
+                                <span>使用者空間 (User Space: 字串格式化、排序、遞迴)</span>
+                                <span class="font-mono text-white font-bold" id="t6-lbl-user-ratio">30.5% (0.17 ms)</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                                <div id="t6-bar-user" class="bg-blue-500 h-2.5 rounded-full transition-all duration-300" style="width: 30.5%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-1.5 text-slate-300">
+                                <span>核心空間 (Kernel Syscall: stat & getdents 檔案檢索)</span>
+                                <span class="font-mono text-white font-bold" id="t6-lbl-sys-ratio">69.5% (0.40 ms)</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                                <div id="t6-bar-sys" class="bg-amber-500 h-2.5 rounded-full transition-all duration-300" style="width: 69.5%"></div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 grid grid-cols-2 gap-3 text-xs">
+                            <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                                <div class="text-slate-400">檔案狀態系統調用次數</div>
+                                <div class="font-mono font-bold text-base text-white mt-0.5" id="t6-metric-syscalls">~45 次 stat/read</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
+                                <div class="text-slate-400">Page Faults (記憶體分頁缺頁)</div>
+                                <div class="font-mono font-bold text-base text-white mt-0.5" id="t6-metric-faults">2 次 (0 次 Major)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Algorithmic Complexity -->
+                <div class="glass-panel p-6 rounded-2xl space-y-5 border border-slate-700/60">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                            <h3 class="font-bold text-white text-base">演算法理論複雜度分析 (Big-O)</h3>
+                        </div>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Computational Complexity
+                        </span>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-semibold text-white">時間複雜度 (Time Complexity)</div>
+                                <div class="text-slate-400 text-xs mt-0.5">走訪 N 個目錄項目並對同層 K 個子節點字典序排序</div>
+                            </div>
+                            <code class="px-2.5 py-1 rounded bg-slate-800 font-mono text-sm text-emerald-400 font-bold">O(N log K)</code>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-semibold text-white">空間複雜度 (Space Complexity)</div>
+                                <div class="text-slate-400 text-xs mt-0.5">遞迴呼叫堆疊深度 <span class="font-mono text-white" id="t6-max-depth">D = 2</span> 加上字串輸出緩衝</div>
+                            </div>
+                            <code class="px-2.5 py-1 rounded bg-slate-800 font-mono text-sm text-purple-400 font-bold">O(D + N)</code>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
+                            <div>
+                                <div class="font-semibold text-white">磁碟讀取資料量 (Total Scanned Bytes)</div>
+                                <div class="text-slate-400 text-xs mt-0.5">所有被掃描檔案之累計位元組大小</div>
+                            </div>
+                            <span class="font-mono font-bold text-base text-white" id="t6-val-bytes">252.2 KB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Tree Output -->
+            <div class="glass-panel rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl">
+                <div class="p-4 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
+                        <span class="font-mono text-xs text-slate-400 ml-2">Terminal Tree Output &mdash; FABEO/</span>
+                    </div>
+                </div>
+                <div class="p-5 bg-slate-950 font-mono text-xs text-emerald-400 overflow-x-auto max-h-[400px] leading-relaxed">
+                    <pre id="t6-tree-content">載入中...</pre>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-6 text-xs text-slate-500 text-center">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>
+                FABEO: Fast Attribute-Based Encryption with Optimal Security (ACM CCS 2022)
+            </div>
+            <div class="flex items-center space-x-4">
+                <span>Type-III Asymmetric Bilinear Groups</span>
+                <span>•</span>
+                <span class="text-purple-400 font-mono">MIT License</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- EMBEDDED PRELOADED DATASET (Fallback for offline file:// execution) -->
+    <script>
+        const PRELOADED_BENCHMARKS = [
+  {
+    "scheme_name": "FABEO_CP",
+    "num_attributes": 10,
+    "policy_str": "10-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.008958666666666667,
+    "keygen_time_ms": 0.04584666666666667,
+    "enc_time_ms": 0.19038833333333335,
+    "dec_time_ms": 0.103097,
+    "sk_g1_elements": 11,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 10,
+    "ct_g2_elements": 2,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 3,
+      "g1_exp": 36,
+      "g1_hash": 33,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 30,
+      "g1_exp": 60,
+      "g1_hash": 33,
+      "g2_mul": 0,
+      "g2_exp": 6,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 60,
+      "g1_exp": 66,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 9,
+      "gt_exp": 3,
+      "pairings": 9
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_CP",
+    "num_attributes": 10,
+    "policy_str": "10-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.022055666666666668,
+    "keygen_time_ms": 0.18056933333333333,
+    "enc_time_ms": 0.16313866666666665,
+    "dec_time_ms": 0.10280533333333335,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 12,
+    "ct_g1_elements": 30,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 36,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 60,
+      "g1_exp": 150,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 60,
+      "g1_exp": 66,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 36,
+      "gt_exp": 33,
+      "pairings": 36
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "BSW_CP",
+    "num_attributes": 10,
+    "policy_str": "10-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.008611333333333334,
+    "keygen_time_ms": 0.07709733333333334,
+    "enc_time_ms": 0.09902766666666667,
+    "dec_time_ms": 0.097028,
+    "sk_g1_elements": 11,
+    "sk_g2_elements": 10,
+    "ct_g1_elements": 10,
+    "ct_g2_elements": 11,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 30,
+      "g1_exp": 63,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 30,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 30,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 33,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 63,
+      "gt_exp": 33,
+      "pairings": 63
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_CP",
+    "num_attributes": 20,
+    "policy_str": "20-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.004722333333333333,
+    "keygen_time_ms": 0.04356933333333333,
+    "enc_time_ms": 0.22301400000000002,
+    "dec_time_ms": 0.22905566666666666,
+    "sk_g1_elements": 21,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 20,
+    "ct_g2_elements": 2,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 3,
+      "g1_exp": 66,
+      "g1_hash": 63,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 60,
+      "g1_exp": 120,
+      "g1_hash": 63,
+      "g2_mul": 0,
+      "g2_exp": 6,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 120,
+      "g1_exp": 126,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 9,
+      "gt_exp": 3,
+      "pairings": 9
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_CP",
+    "num_attributes": 20,
+    "policy_str": "20-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.015569333333333333,
+    "keygen_time_ms": 0.3047086666666667,
+    "enc_time_ms": 0.33766633333333335,
+    "dec_time_ms": 0.25776366666666667,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 22,
+    "ct_g1_elements": 60,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 66,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 120,
+      "g1_exp": 300,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 120,
+      "g1_exp": 126,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 66,
+      "gt_exp": 63,
+      "pairings": 66
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "BSW_CP",
+    "num_attributes": 20,
+    "policy_str": "20-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.007055333333333334,
+    "keygen_time_ms": 0.13225,
+    "enc_time_ms": 0.195472,
+    "dec_time_ms": 0.2501666666666667,
+    "sk_g1_elements": 21,
+    "sk_g2_elements": 20,
+    "ct_g1_elements": 20,
+    "ct_g2_elements": 21,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 60,
+      "g1_exp": 123,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 60,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 60,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 63,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 123,
+      "gt_exp": 63,
+      "pairings": 123
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_CP",
+    "num_attributes": 50,
+    "policy_str": "50-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.004250333333333333,
+    "keygen_time_ms": 0.09191666666666666,
+    "enc_time_ms": 0.6063196666666667,
+    "dec_time_ms": 1.0086526666666666,
+    "sk_g1_elements": 51,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 50,
+    "ct_g2_elements": 2,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 3,
+      "g1_exp": 156,
+      "g1_hash": 153,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 150,
+      "g1_exp": 300,
+      "g1_hash": 153,
+      "g2_mul": 0,
+      "g2_exp": 6,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 300,
+      "g1_exp": 306,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 9,
+      "gt_exp": 3,
+      "pairings": 9
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_CP",
+    "num_attributes": 50,
+    "policy_str": "50-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.017180333333333332,
+    "keygen_time_ms": 0.7412913333333334,
+    "enc_time_ms": 0.847986,
+    "dec_time_ms": 1.0278333333333334,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 52,
+    "ct_g1_elements": 150,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 156,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 300,
+      "g1_exp": 750,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 300,
+      "g1_exp": 306,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 156,
+      "gt_exp": 153,
+      "pairings": 156
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "BSW_CP",
+    "num_attributes": 50,
+    "policy_str": "50-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.006833666666666666,
+    "keygen_time_ms": 0.2710416666666667,
+    "enc_time_ms": 0.5209860000000001,
+    "dec_time_ms": 1.0919583333333334,
+    "sk_g1_elements": 51,
+    "sk_g2_elements": 50,
+    "ct_g1_elements": 50,
+    "ct_g2_elements": 51,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 150,
+      "g1_exp": 303,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 150,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 150,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 153,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 303,
+      "gt_exp": 153,
+      "pairings": 303
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_CP",
+    "num_attributes": 100,
+    "policy_str": "100-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.005138666666666666,
+    "keygen_time_ms": 0.171139,
+    "enc_time_ms": 1.5086946666666667,
+    "dec_time_ms": 3.5155553333333334,
+    "sk_g1_elements": 101,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 100,
+    "ct_g2_elements": 2,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 3,
+      "g1_exp": 306,
+      "g1_hash": 303,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 300,
+      "g1_exp": 600,
+      "g1_hash": 303,
+      "g2_mul": 0,
+      "g2_exp": 6,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 600,
+      "g1_exp": 606,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 9,
+      "gt_exp": 3,
+      "pairings": 9
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_CP",
+    "num_attributes": 100,
+    "policy_str": "100-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.016472333333333332,
+    "keygen_time_ms": 1.4427080000000003,
+    "enc_time_ms": 2.1314163333333336,
+    "dec_time_ms": 3.6949306666666666,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 102,
+    "ct_g1_elements": 300,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 306,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 600,
+      "g1_exp": 1500,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 600,
+      "g1_exp": 606,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 306,
+      "gt_exp": 303,
+      "pairings": 306
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "BSW_CP",
+    "num_attributes": 100,
+    "policy_str": "100-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.008319666666666668,
+    "keygen_time_ms": 0.5269026666666666,
+    "enc_time_ms": 1.3819446666666666,
+    "dec_time_ms": 3.7789303333333333,
+    "sk_g1_elements": 101,
+    "sk_g2_elements": 100,
+    "ct_g1_elements": 100,
+    "ct_g2_elements": 101,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 300,
+      "g1_exp": 603,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 300,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 300,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 303,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 603,
+      "gt_exp": 303,
+      "pairings": 603
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_KP",
+    "num_attributes": 10,
+    "policy_str": "10-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.005166666666666667,
+    "keygen_time_ms": 0.10240266666666666,
+    "enc_time_ms": 0.020528,
+    "dec_time_ms": 0.08476399999999999,
+    "sk_g1_elements": 10,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 10,
+    "ct_g2_elements": 1,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 30,
+      "g1_exp": 60,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 30,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 60,
+      "g1_exp": 66,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 6,
+      "gt_exp": 3,
+      "pairings": 6
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_KP",
+    "num_attributes": 10,
+    "policy_str": "10-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.009611,
+    "keygen_time_ms": 0.21586133333333332,
+    "enc_time_ms": 0.069667,
+    "dec_time_ms": 0.09673633333333333,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 20,
+    "ct_g1_elements": 20,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 60,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 30,
+      "g1_exp": 90,
+      "g1_hash": 30,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 63,
+      "gt_exp": 66,
+      "pairings": 60
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_KP",
+    "num_attributes": 20,
+    "policy_str": "20-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.0037496666666666663,
+    "keygen_time_ms": 0.19118033333333337,
+    "enc_time_ms": 0.03704166666666667,
+    "dec_time_ms": 0.22275,
+    "sk_g1_elements": 20,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 20,
+    "ct_g2_elements": 1,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 60,
+      "g1_exp": 120,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 60,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 120,
+      "g1_exp": 126,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 6,
+      "gt_exp": 3,
+      "pairings": 6
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_KP",
+    "num_attributes": 20,
+    "policy_str": "20-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.009930666666666666,
+    "keygen_time_ms": 0.450528,
+    "enc_time_ms": 0.14206933333333333,
+    "dec_time_ms": 0.2603193333333333,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 40,
+    "ct_g1_elements": 40,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 120,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 60,
+      "g1_exp": 180,
+      "g1_hash": 60,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 123,
+      "gt_exp": 126,
+      "pairings": 120
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_KP",
+    "num_attributes": 50,
+    "policy_str": "50-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.00475,
+    "keygen_time_ms": 0.601042,
+    "enc_time_ms": 0.08869466666666666,
+    "dec_time_ms": 1.0152496666666666,
+    "sk_g1_elements": 50,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 50,
+    "ct_g2_elements": 1,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 150,
+      "g1_exp": 300,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 150,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 300,
+      "g1_exp": 306,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 6,
+      "gt_exp": 3,
+      "pairings": 6
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_KP",
+    "num_attributes": 50,
+    "policy_str": "50-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.010805666666666667,
+    "keygen_time_ms": 1.2332919999999998,
+    "enc_time_ms": 0.305736,
+    "dec_time_ms": 1.0109306666666666,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 100,
+    "ct_g1_elements": 100,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 300,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 150,
+      "g1_exp": 450,
+      "g1_hash": 150,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 303,
+      "gt_exp": 306,
+      "pairings": 300
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "FABEO_KP",
+    "num_attributes": 100,
+    "policy_str": "100-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.003986,
+    "keygen_time_ms": 1.5062360000000001,
+    "enc_time_ms": 0.16001366666666664,
+    "dec_time_ms": 3.407472333333333,
+    "sk_g1_elements": 100,
+    "sk_g2_elements": 1,
+    "ct_g1_elements": 100,
+    "ct_g2_elements": 1,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 300,
+      "g1_exp": 600,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 0,
+      "g1_exp": 300,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 3,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 600,
+      "g1_exp": 606,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 6,
+      "gt_exp": 3,
+      "pairings": 6
+    },
+    "correctness": true
+  },
+  {
+    "scheme_name": "ABGW_KP",
+    "num_attributes": 100,
+    "policy_str": "100-clause AND",
+    "tau": 1,
+    "setup_time_ms": 0.011611333333333335,
+    "keygen_time_ms": 2.5923746666666667,
+    "enc_time_ms": 0.6743753333333333,
+    "dec_time_ms": 3.6280136666666665,
+    "sk_g1_elements": 0,
+    "sk_g2_elements": 200,
+    "ct_g1_elements": 200,
+    "ct_g2_elements": 0,
+    "ct_gt_elements": 1,
+    "group_ops_keygen": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 600,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 0,
+      "pairings": 0
+    },
+    "group_ops_enc": {
+      "g1_mul": 300,
+      "g1_exp": 900,
+      "g1_hash": 300,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 0,
+      "gt_exp": 3,
+      "pairings": 0
+    },
+    "group_ops_dec": {
+      "g1_mul": 0,
+      "g1_exp": 0,
+      "g1_hash": 0,
+      "g2_mul": 0,
+      "g2_exp": 0,
+      "g2_hash": 0,
+      "gt_mul": 603,
+      "gt_exp": 606,
+      "pairings": 600
+    },
+    "correctness": true
+  }
+];
+
+        const CURVE_DATA = {
+            "BLS12-381": {
+                name: "BLS12-381",
+                security: "128-bit",
+                compressed: { g1: 48, g2: 96, gt: 288, zp: 32 },
+                uncompressed: { g1: 96, g2: 192, gt: 576, zp: 32 }
+            },
+            "BN254": {
+                name: "BN254",
+                security: "100-bit",
+                compressed: { g1: 32, g2: 64, gt: 192, zp: 32 },
+                uncompressed: { g1: 64, g2: 128, gt: 384, zp: 32 }
+            },
+            "MNT224": {
+                name: "MNT224",
+                security: "96-bit (Paper)",
+                compressed: { g1: 29, g2: 171, gt: 171, zp: 28 },
+                uncompressed: { g1: 58, g2: 342, gt: 342, zp: 28 }
+            }
+        };
+
+        const PRELOADED_DFA = [
+            { string_length: 10, setup_time_ms: 0.03, keygen_time_ms: 0.05, enc_time_ms: 0.06, dec_time_ms: 0.05, pairings_dec: 34, correctness: true },
+            { string_length: 20, setup_time_ms: 0.02, keygen_time_ms: 0.05, enc_time_ms: 0.12, dec_time_ms: 0.09, pairings_dec: 64, correctness: true },
+            { string_length: 50, setup_time_ms: 0.02, keygen_time_ms: 0.06, enc_time_ms: 0.29, dec_time_ms: 0.21, pairings_dec: 154, correctness: true },
+            { string_length: 100, setup_time_ms: 0.03, keygen_time_ms: 0.07, enc_time_ms: 0.58, dec_time_ms: 0.42, pairings_dec: 304, correctness: true }
+        ];
+    </script>
+
+    <!-- CORE APPLICATION LOGIC & CHARTS -->
+    <script>
+        let currentBenchmarks = PRELOADED_BENCHMARKS;
+        let currentDfa = PRELOADED_DFA;
+        let isServerOnline = false;
+        let activeSchemeFilter = 'all';
+
+        // Chart references
+        let charts = {};
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkServerConnection();
+            initCharts();
+            updateAllViews();
+            evaluatePolicyInteractive(); // Initial policy run
+        });
+
+        // Check if Python web_server is running
+        async function checkServerConnection() {
+            const badge = document.getElementById('serverStatusBadge');
+            const text = document.getElementById('serverStatusText');
+            try {
+                const res = await fetch('/api/system-info', { signal: AbortSignal.timeout(1200) });
+                if (res.ok) {
+                    const info = await res.json();
+                    isServerOnline = true;
+                    badge.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-medium text-xs";
+                    text.textContent = "伺服器已連線 (即時模式)";
+                    // Fetch fresh benchmarks from server
+                    try {
+                        const bRes = await fetch('/api/benchmark-data');
+                        if (bRes.ok) {
+                            const bData = await bRes.json();
+                            if (bData.benchmarks && bData.benchmarks.length) {
+                                currentBenchmarks = bData.benchmarks;
+                            }
+                            if (bData.dfa_benchmarks && bData.dfa_benchmarks.length) {
+                                currentDfa = bData.dfa_benchmarks;
+                            }
+                        }
+                    } catch (e) {}
+                    return;
+                }
+            } catch (e) {}
+
+            // Fallback to static mode
+            isServerOnline = false;
+            badge.className = "flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 text-purple-300 font-medium text-xs";
+            text.textContent = "靜態評測模式 (展示資料)";
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            const tabs = ['overview', 'computation', 'storage', 'calculator', 'benchmark', 'tree_cost'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tabId) {
+                    el.classList.remove('hidden');
+                    btn.className = "tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition-all text-purple-300 bg-brand-900/40 border border-brand-500/40 shadow-sm";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60";
+                }
+            });
+
+            // Trigger chart resize on tab switch
+            setTimeout(() => {
+                Object.values(charts).forEach(c => c && c.resize && c.resize());
+            }, 50);
+        }
+
+        function getCurveSizes() {
+            const curveName = document.getElementById('globalCurveSelect').value;
+            const mode = document.getElementById('compressionSelect').value;
+            const curve = CURVE_DATA[curveName] || CURVE_DATA["BLS12-381"];
+            return {
+                name: curve.name,
+                security: curve.security,
+                mode: mode,
+                sizes: curve[mode]
+            };
+        }
+
+        function updateCurveSettings() {
+            const spec = getCurveSizes();
+            const s = spec.sizes;
+            document.getElementById('curveParamInfo').textContent = `${spec.name} (${spec.mode}, G1:${s.g1}B, G2:${s.g2}B, GT:${s.gt}B)`;
+            document.getElementById('calcCurveLabel').textContent = `${spec.name} (${spec.mode})`;
+            updateStorageChartsAndTable();
+            evaluatePolicyInteractive();
+        }
+
+        // Filter schemes in computational view
+        function toggleSchemeFilter(type) {
+            activeSchemeFilter = type;
+            const buttons = document.querySelectorAll('.filter-btn');
+            buttons.forEach(b => {
+                b.className = "filter-btn px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:bg-slate-700";
+            });
+            event.target.className = "filter-btn px-2.5 py-1 text-xs rounded bg-purple-600 text-white font-medium";
+            updateComputationCharts();
+        }
+
+        // Setup Charts using Chart.js
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        borderColor: '#475569',
+                        borderWidth: 1,
+                        padding: 10,
+                        titleFont: { family: 'Inter', size: 12, weight: 'bold' },
+                        bodyFont: { family: 'Fira Code', size: 11 }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } },
+                        title: { display: true, text: '屬性數量 (N)', color: '#64748b', font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { family: 'Fira Code', size: 11 } }
+                    }
+                }
+            };
+
+            // 1. Decryption Time Chart
+            charts.decTime = new Chart(document.getElementById('decryptionTimeChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '解密耗時 (ms)', color: '#64748b' } }
+                    }
+                }
+            });
+
+            // 2. Pairings Count Chart
+            charts.pairings = new Chart(document.getElementById('pairingsCountChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '配對次數 (次)', color: '#64748b' } }
+                    }
+                }
+            });
+
+            // 3. Encryption Time Chart
+            charts.encTime = new Chart(document.getElementById('encryptionTimeChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '加密耗時 (ms)', color: '#64748b' } }
+                    }
+                }
+            });
+
+            // 4. KeyGen Time Chart
+            charts.keygenTime = new Chart(document.getElementById('keygenTimeChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '金鑰生成耗時 (ms)', color: '#64748b' } }
+                    }
+                }
+            });
+
+            // 5. Secret Key Size Chart
+            charts.skSize = new Chart(document.getElementById('skSizeChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '私鑰大小 (KB)', color: '#64748b' } }
+                    }
+                }
+            });
+
+            // 6. Ciphertext Size Chart
+            charts.ctSize = new Chart(document.getElementById('ctSizeChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '密文大小 (KB)', color: '#64748b' } }
+                    }
+                }
+            });
+
+            // 7. DFA Chart
+            charts.dfa = new Chart(document.getElementById('dfaChart').getContext('2d'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        x: { ...commonOptions.scales.x, title: { display: true, text: '正規字串長度 (|x|)', color: '#64748b' } },
+                        y: { ...commonOptions.scales.y, title: { display: true, text: '解密時間 (ms) / 配對次數', color: '#64748b' } }
+                    }
+                }
+            });
+        }
+
+        // Scheme colors palette
+        const SCHEME_PALETTE = {
+            'FABEO_CP': { label: 'FABEO CP (Ours)', color: '#a855f7', border: '#c084fc', width: 3 },
+            'ABGW_CP': { label: 'ABGW CP [CCS17]', color: '#38bdf8', border: '#7dd3fc', width: 2 },
+            'BSW_CP': { label: 'BSW CP [SP07]', color: '#f43f5e', border: '#fb7185', width: 2 },
+            'FABEO_KP': { label: 'FABEO KP (Ours)', color: '#10b981', border: '#34d399', width: 3 },
+            'ABGW_KP': { label: 'ABGW KP [CCS17]', color: '#f59e0b', border: '#fbbf24', width: 2 }
+        };
+
+        function updateAllViews() {
+            updateComputationCharts();
+            updateStorageChartsAndTable();
+            updateDfaView();
+        }
+
+        function updateComputationCharts() {
+            const attrs = [10, 20, 50, 100];
+            const schemes = Object.keys(SCHEME_PALETTE).filter(s => {
+                if (activeSchemeFilter === 'cp') return s.endsWith('_CP');
+                if (activeSchemeFilter === 'kp') return s.endsWith('_KP');
+                return true;
+            });
+
+            function buildDataset(metricKey, factor = 1) {
+                return schemes.map(s => {
+                    const p = SCHEME_PALETTE[s];
+                    const pts = attrs.map(n => {
+                        const rec = currentBenchmarks.find(b => b.scheme_name === s && b.num_attributes === n);
+                        if (!rec) return null;
+                        if (metricKey === 'pairings') {
+                            return rec.group_ops_dec ? rec.group_ops_dec.pairings || 0 : 0;
+                        }
+                        return rec[metricKey] ? (rec[metricKey] * factor) : null;
+                    });
+                    return {
+                        label: p.label,
+                        data: pts,
+                        borderColor: p.border,
+                        backgroundColor: p.color + '22',
+                        borderWidth: p.width,
+                        tension: 0.25,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    };
+                });
+            }
+
+            // Update Decryption Time
+            charts.decTime.data.labels = attrs;
+            charts.decTime.data.datasets = buildDataset('dec_time_ms');
+            charts.decTime.update();
+
+            // Update Pairings Count
+            charts.pairings.data.labels = attrs;
+            charts.pairings.data.datasets = buildDataset('pairings');
+            charts.pairings.update();
+
+            // Update KeyGen Time
+            charts.keygenTime.data.labels = attrs;
+            charts.keygenTime.data.datasets = buildDataset('keygen_time_ms');
+            charts.keygenTime.update();
+
+            // Update Encryption Time
+            charts.encTime.data.labels = attrs;
+            charts.encTime.data.datasets = buildDataset('enc_time_ms');
+            charts.encTime.update();
+
+            // Populate Group Operations Table (@ N=100)
+            const tbody = document.getElementById('groupOpsTableBody');
+            tbody.innerHTML = '';
+            const n100Records = currentBenchmarks.filter(b => b.num_attributes === 100);
+            n100Records.forEach(r => {
+                const ops = r.group_ops_dec || {};
+                const encOps = r.group_ops_enc || {};
+                const tr = document.createElement('tr');
+                const isOurs = r.scheme_name.startsWith('FABEO');
+                tr.className = isOurs ? "bg-brand-900/20 hover:bg-brand-900/30" : "hover:bg-slate-800/40";
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3 font-semibold ${isOurs ? 'text-purple-300' : 'text-slate-300'}">${SCHEME_PALETTE[r.scheme_name]?.label || r.scheme_name}</td>
+                    <td class="py-2.5 px-3">${r.num_attributes}</td>
+                    <td class="py-2.5 px-3 text-right text-slate-400">${encOps.g1_exp || 0}</td>
+                    <td class="py-2.5 px-3 text-right text-slate-400">${encOps.g1_mul || 0}</td>
+                    <td class="py-2.5 px-3 text-right text-slate-400">${encOps.g1_hash || 0}</td>
+                    <td class="py-2.5 px-3 text-right text-slate-400">${encOps.g2_exp || 0}</td>
+                    <td class="py-2.5 px-3 text-right text-slate-400">${encOps.gt_exp || 0}</td>
+                    <td class="py-2.5 px-3 text-right font-bold ${isOurs ? 'text-emerald-300 bg-brand-500/10' : 'text-purple-300'}">${ops.pairings || 0} 次</td>
+                    <td class="py-2.5 px-3 text-right font-bold text-slate-200">${r.dec_time_ms.toFixed(2)} ms</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateStorageChartsAndTable() {
+            const attrs = [10, 20, 50, 100];
+            const spec = getCurveSizes();
+            const s = spec.sizes;
+
+            const schemes = ['FABEO_CP', 'ABGW_CP', 'BSW_CP', 'FABEO_KP', 'ABGW_KP'];
+
+            function buildSizeDataset(type) {
+                return schemes.map(sch => {
+                    const p = SCHEME_PALETTE[sch];
+                    const pts = attrs.map(n => {
+                        const rec = currentBenchmarks.find(b => b.scheme_name === sch && b.num_attributes === n);
+                        if (!rec) return null;
+                        let bytes = 0;
+                        if (type === 'sk') {
+                            bytes = (rec.sk_g1_elements * s.g1) + (rec.sk_g2_elements * s.g2);
+                        } else {
+                            bytes = (rec.ct_g1_elements * s.g1) + (rec.ct_g2_elements * s.g2) + (rec.ct_gt_elements * s.gt);
+                        }
+                        return +(bytes / 1024).toFixed(3); // KB
+                    });
+                    return {
+                        label: p.label,
+                        data: pts,
+                        borderColor: p.border,
+                        backgroundColor: p.color + '22',
+                        borderWidth: p.width,
+                        tension: 0.25,
+                        pointRadius: 4
+                    };
+                });
+            }
+
+            charts.skSize.data.labels = attrs;
+            charts.skSize.data.datasets = buildSizeDataset('sk');
+            charts.skSize.update();
+
+            charts.ctSize.data.labels = attrs;
+            charts.ctSize.data.datasets = buildSizeDataset('ct');
+            charts.ctSize.update();
+
+            // Populate Storage Table
+            const tbody = document.getElementById('storageTableBody');
+            tbody.innerHTML = '';
+            attrs.forEach(n => {
+                const fabeoCp = currentBenchmarks.find(b => b.scheme_name === 'FABEO_CP' && b.num_attributes === n);
+                const abgwCp = currentBenchmarks.find(b => b.scheme_name === 'ABGW_CP' && b.num_attributes === n);
+
+                const fabeoCtBytes = fabeoCp ? (fabeoCp.ct_g1_elements * s.g1) + (fabeoCp.ct_g2_elements * s.g2) + (fabeoCp.ct_gt_elements * s.gt) : 0;
+                const abgwCtBytes = abgwCp ? (abgwCp.ct_g1_elements * s.g1) + (abgwCp.ct_g2_elements * s.g2) + (abgwCp.ct_gt_elements * s.gt) : 0;
+                const savingsPct = abgwCtBytes > 0 ? (((abgwCtBytes - fabeoCtBytes) / abgwCtBytes) * 100).toFixed(1) : 0;
+
+                ['FABEO_CP', 'ABGW_CP', 'BSW_CP'].forEach(sch => {
+                    const rec = currentBenchmarks.find(b => b.scheme_name === sch && b.num_attributes === n);
+                    if (!rec) return;
+                    const skBytes = (rec.sk_g1_elements * s.g1) + (rec.sk_g2_elements * s.g2);
+                    const ctBytes = (rec.ct_g1_elements * s.g1) + (rec.ct_g2_elements * s.g2) + (rec.ct_gt_elements * s.gt);
+                    const isOurs = sch.startsWith('FABEO');
+
+                    const tr = document.createElement('tr');
+                    tr.className = isOurs ? "bg-brand-900/20 hover:bg-brand-900/30" : "hover:bg-slate-800/40";
+                    tr.innerHTML = `
+                        <td class="py-2.5 px-3 font-semibold ${isOurs ? 'text-purple-300' : 'text-slate-300'}">${SCHEME_PALETTE[sch]?.label}</td>
+                        <td class="py-2.5 px-3 text-center">${n}</td>
+                        <td class="py-2.5 px-3 text-center text-slate-400">${rec.sk_g1_elements} G₁ + ${rec.sk_g2_elements} G₂</td>
+                        <td class="py-2.5 px-3 text-right font-medium text-slate-200">${skBytes.toLocaleString()} B</td>
+                        <td class="py-2.5 px-3 text-center text-slate-400">${rec.ct_g1_elements} G₁ + ${rec.ct_g2_elements} G₂ + ${rec.ct_gt_elements} G_T</td>
+                        <td class="py-2.5 px-3 text-right font-medium text-slate-200">${ctBytes.toLocaleString()} B</td>
+                        <td class="py-2.5 px-3 text-right font-bold ${isOurs ? 'text-emerald-400' : 'text-slate-500'}">
+                            ${isOurs ? `-${savingsPct}% 體積節省` : '基準方案'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function updateDfaView() {
+            const labels = currentDfa.map(d => d.string_length);
+            const decTimes = currentDfa.map(d => d.dec_time_ms);
+            const pairings = currentDfa.map(d => d.pairings_dec);
+
+            charts.dfa.data.labels = labels;
+            charts.dfa.data.datasets = [
+                {
+                    label: 'DFA 解密時間 (ms)',
+                    data: decTimes,
+                    borderColor: '#a855f7',
+                    backgroundColor: '#a855f722',
+                    yAxisID: 'y',
+                    borderWidth: 2,
+                    pointRadius: 4
+                },
+                {
+                    label: 'DFA 配對次數 (次)',
+                    data: pairings,
+                    borderColor: '#10b981',
+                    backgroundColor: '#10b98122',
+                    yAxisID: 'y',
+                    borderWidth: 2,
+                    pointRadius: 4
+                }
+            ];
+            charts.dfa.update();
+
+            const tbody = document.getElementById('dfaTableBody');
+            tbody.innerHTML = '';
+            currentDfa.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40";
+                tr.innerHTML = `
+                    <td class="py-2 px-3 font-semibold text-purple-300">${d.string_length} 字元</td>
+                    <td class="py-2 px-3 text-right text-slate-400">${d.setup_time_ms.toFixed(3)}</td>
+                    <td class="py-2 px-3 text-right text-slate-400">${d.keygen_time_ms.toFixed(3)}</td>
+                    <td class="py-2 px-3 text-right text-slate-400">${d.enc_time_ms.toFixed(3)}</td>
+                    <td class="py-2 px-3 text-right font-bold text-emerald-400">${d.dec_time_ms.toFixed(3)}</td>
+                    <td class="py-2 px-3 text-right font-bold text-purple-300">${d.pairings_dec}</td>
+                    <td class="py-2 px-3 text-center text-emerald-400 font-bold">${d.correctness ? 'PASS' : 'FAIL'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Interactive Policy Evaluation
+        const PRESETS = {
+            medical: {
+                policy: "(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:CHIEF_OF_MEDICINE",
+                attrs: "MEDICINE:DOCTOR, DEPT:CARDIOLOGY"
+            },
+            multi_use: {
+                policy: "(ATTR_A AND ATTR_B) OR (ATTR_A AND ATTR_C)",
+                attrs: "ATTR_A, ATTR_C"
+            },
+            enterprise: {
+                policy: "((FINANCE:AUDITOR AND DEPT:ACCOUNTING) OR ROLE:CFO) AND REGION:US_EAST",
+                attrs: "ROLE:CFO, REGION:US_EAST"
+            },
+            threshold: {
+                policy: "2 OF (KEY_ALPHA, KEY_BETA, KEY_GAMMA, KEY_DELTA)",
+                attrs: "KEY_ALPHA, KEY_GAMMA"
+            },
+            large: {
+                policy: "(A AND B AND C) OR (D AND E) OR (F AND G AND H)",
+                attrs: "D, E, F"
+            }
+        };
+
+        function loadPresetPolicy() {
+            const key = document.getElementById('calcPresetSelect').value;
+            if (PRESETS[key]) {
+                document.getElementById('calcPolicyInput').value = PRESETS[key].policy;
+                document.getElementById('calcAttributesInput').value = PRESETS[key].attrs;
+                evaluatePolicyInteractive();
+            }
+        }
+
+        async function evaluatePolicyInteractive() {
+            const policy = document.getElementById('calcPolicyInput').value.trim();
+            const attrsRaw = document.getElementById('calcAttributesInput').value;
+            const attrs = attrsRaw.split(',').map(s => s.trim()).filter(Boolean);
+            const spec = getCurveSizes();
+
+            if (isServerOnline) {
+                try {
+                    const res = await fetch('/api/evaluate-policy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            policy: policy,
+                            attributes: attrs,
+                            curve: spec.name,
+                            compressed: (spec.mode === 'compressed')
+                        })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success) {
+                            renderPolicyResults(data);
+                            return;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // Standalone Client-side Fallback Evaluator
+            renderPolicyClientFallback(policy, attrs, spec);
+        }
+
+        function renderPolicyResults(data) {
+            const authStatus = document.getElementById('calcAuthStatus');
+            const authBadge = document.getElementById('calcAuthBadge');
+            if (data.satisfied) {
+                authStatus.innerHTML = '<span class="text-emerald-400">✓ 授權解密成功 (Satisfied)</span>';
+                authBadge.className = "w-3 h-3 rounded-full bg-emerald-400 animate-pulse";
+            } else {
+                authStatus.innerHTML = '<span class="text-rose-400">✗ 未授權拒絕 (Rejected)</span>';
+                authBadge.className = "w-3 h-3 rounded-full bg-rose-500";
+            }
+
+            document.getElementById('calcMspDim').textContent = `${data.msp.matrix_rows} × ${data.msp.matrix_cols}`;
+            document.getElementById('calcClauseCount').textContent = data.msp.matrix_rows;
+            document.getElementById('calcTauVal').textContent = data.msp.tau;
+            document.getElementById('calcFabeoPairings').textContent = (data.msp.tau + 2) + " 次";
+            document.getElementById('calcSolveTime').textContent = data.solve_ms + " ms";
+            document.getElementById('calcUsedRows').textContent = data.msp.satisfying_subset_size + " 行";
+
+            const tbody = document.getElementById('calcComparisonTableBody');
+            tbody.innerHTML = '';
+            data.comparison.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.className = c.is_ours ? "bg-brand-900/30 border-l-4 border-brand-500" : "hover:bg-slate-800/40";
+                tr.innerHTML = `
+                    <td class="py-3 px-3 font-bold ${c.is_ours ? 'text-purple-300' : 'text-slate-300'}">${c.name}</td>
+                    <td class="py-3 px-3 text-center font-bold ${c.is_ours ? 'text-emerald-300 bg-brand-500/10' : 'text-purple-300'}">${c.pairings} 次</td>
+                    <td class="py-3 px-3 text-center text-slate-400 font-mono">${c.pairing_formula}</td>
+                    <td class="py-3 px-3 text-center text-slate-300">${c.sk_g1} G₁ + ${c.sk_g2} G₂</td>
+                    <td class="py-3 px-3 text-right font-semibold text-slate-200">${c.sk_bytes.toLocaleString()} B</td>
+                    <td class="py-3 px-3 text-center text-slate-300">${c.ct_g1} G₁ + ${c.ct_g2} G₂ + ${c.ct_gt} G_T</td>
+                    <td class="py-3 px-3 text-right font-semibold text-slate-200">${c.ct_bytes.toLocaleString()} B</td>
+                    <td class="py-3 px-3 text-center text-slate-400">${c.security}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderPolicyClientFallback(policy, attrs, spec) {
+            // Clean client-side approximation
+            const s = spec.sizes;
+            const tokens = policy.replace(/[\(\),]/g, ' ').split(/\s+/).filter(Boolean);
+            const opWords = new Set(['AND', 'OR', 'OF', '1', '2', '3', '4', '5']);
+            const attrTokens = tokens.filter(t => !opWords.has(t.toUpperCase()));
+
+            // Multi-use tau estimation
+            const counts = {};
+            attrTokens.forEach(a => {
+                const up = a.toUpperCase();
+                counts[up] = (counts[up] || 0) + 1;
+            });
+            const tau = Math.max(1, ...Object.values(counts));
+            const n1 = Math.max(1, attrTokens.length);
+            const m = attrs.length;
+
+            const userUpper = new Set(attrs.map(a => a.toUpperCase()));
+            const satisfied = attrTokens.some(a => userUpper.has(a.toUpperCase()));
+            const I_len = Math.max(1, Math.min(n1, m));
+
+            const fabeo_sk_bytes = (m + 1) * s.g1 + 1 * s.g2;
+            const fabeo_ct_bytes = n1 * s.g1 + (tau + 1) * s.g2 + 1 * s.gt;
+
+            const abgw_sk_bytes = (m + 2) * s.g2;
+            const abgw_ct_bytes = 3 * n1 * s.g1 + 1 * s.gt;
+
+            const bsw_sk_bytes = (m + 1) * s.g1 + m * s.g2;
+            const bsw_ct_bytes = n1 * s.g1 + (n1 + 1) * s.g2 + 1 * s.gt;
+
+            const fame_sk_bytes = (3 * m + 3) * s.g1 + 3 * s.g2;
+            const fame_ct_bytes = 3 * n1 * s.g1 + 3 * s.g2 + 1 * s.gt;
+
+            const data = {
+                success: true,
+                satisfied: satisfied,
+                solve_ms: 0.04,
+                msp: {
+                    matrix_rows: n1,
+                    matrix_cols: Math.max(1, n1 - 1),
+                    tau: tau,
+                    satisfying_subset_size: I_len
+                },
+                comparison: [
+                    {
+                        name: "FABEO CP (Ours)",
+                        is_ours: true,
+                        pairings: tau + 2,
+                        pairing_formula: `tau + 2 = ${tau} + 2 = ${tau + 2}`,
+                        sk_g1: m + 1, sk_g2: 1, sk_bytes: fabeo_sk_bytes,
+                        ct_g1: n1, ct_g2: tau + 1, ct_gt: 1, ct_bytes: fabeo_ct_bytes,
+                        security: "Optimal O(t^2/p) GGM"
+                    },
+                    {
+                        name: "ABGW CP (CCS'17)",
+                        is_ours: false,
+                        pairings: I_len + 2,
+                        pairing_formula: `|I| + 2 = ${I_len} + 2 = ${I_len + 2}`,
+                        sk_g1: 0, sk_g2: m + 2, sk_bytes: abgw_sk_bytes,
+                        ct_g1: 3 * n1, ct_g2: 0, ct_gt: 1, ct_bytes: abgw_ct_bytes,
+                        security: "O(t^4/p)"
+                    },
+                    {
+                        name: "BSW CP (S&P'07)",
+                        is_ours: false,
+                        pairings: 2 * I_len + 1,
+                        pairing_formula: `2|I| + 1 = 2(${I_len}) + 1 = ${2 * I_len + 1}`,
+                        sk_g1: m + 1, sk_g2: m, sk_bytes: bsw_sk_bytes,
+                        ct_g1: n1, ct_g2: n1 + 1, ct_gt: 1, ct_bytes: bsw_ct_bytes,
+                        security: "O(t^3/p) Generic"
+                    },
+                    {
+                        name: "FAME CP (CCS'17)",
+                        is_ours: false,
+                        pairings: 6,
+                        pairing_formula: "6 (Constant)",
+                        sk_g1: 3 * m + 3, sk_g2: 3, sk_bytes: fame_sk_bytes,
+                        ct_g1: 3 * n1, ct_g2: 3, ct_gt: 1, ct_bytes: fame_ct_bytes,
+                        security: "O(t^4/p) Standard"
+                    }
+                ]
+            };
+            renderPolicyResults(data);
+        }
+
+        // Run live benchmarks
+        async function runLiveBenchmark() {
+            const btn = document.getElementById('runBenchmarkBtn');
+            const btnText = document.getElementById('benchBtnText');
+            const spinner = document.getElementById('benchSpinner');
+            const consoleLog = document.getElementById('benchConsoleLog');
+            const statusLabel = document.getElementById('benchLogStatus');
+
+            if (!isServerOnline) {
+                alert("⚠️ 目前為靜態檔案瀏覽模式，請啟動後端伺服器 (python3 main.py web 或 python3 web_server.py) 即可執行本機即時跑分！");
+                return;
+            }
+
+            const checkedAttrs = Array.from(document.querySelectorAll('input[name="benchAttr"]:checked')).map(el => parseInt(el.value));
+            if (!checkedAttrs.length) {
+                alert("請至少選擇一個測試屬性規模！");
+                return;
+            }
+            const trials = parseInt(document.getElementById('benchTrialsInput').value) || 1;
+            const curve = document.getElementById('globalCurveSelect').value;
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = "跑分執行中...";
+            statusLabel.textContent = "運算中...";
+            statusLabel.className = "font-mono text-amber-400 animate-pulse";
+
+            consoleLog.textContent = `[${new Date().toLocaleTimeString()}] 啟動密碼學效能評測 (Trials: ${trials}, Attrs: ${checkedAttrs.join(', ')}, Curve: ${curve})...
+`;
+            consoleLog.textContent += `[INFO] 正在執行 Type-III 配對群群運算計數與奈秒級高精準計時...
+`;
+
+            try {
+                const res = await fetch('/api/run-benchmark', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        attributes: checkedAttrs,
+                        trials: trials,
+                        curve: curve
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.results) {
+                        consoleLog.textContent += `[SUCCESS] 測試完成！成功收集 ${data.results.length} 筆最新方案基準指標。
+`;
+                        data.results.forEach(r => {
+                            consoleLog.textContent += `  ✓ ${r.scheme_name.padEnd(10)} @ N=${r.num_attributes.toString().padEnd(3)} | Dec: ${r.dec_time_ms.toFixed(2)}ms | Pairings: ${r.group_ops_dec?.pairings || 0}
+`;
+                        });
+                        // Merge results
+                        data.results.forEach(newR => {
+                            const idx = currentBenchmarks.findIndex(b => b.scheme_name === newR.scheme_name && b.num_attributes === newR.num_attributes);
+                            if (idx >= 0) {
+                                currentBenchmarks[idx] = newR;
+                            } else {
+                                currentBenchmarks.push(newR);
+                            }
+                        });
+
+                        updateAllViews();
+                        statusLabel.textContent = "跑分成功完成";
+                        statusLabel.className = "font-mono text-emerald-400";
+                    }
+                } else {
+                    consoleLog.textContent += `[ERROR] 伺服器回傳狀態碼: ${res.status}
+`;
+                }
+            } catch (e) {
+                consoleLog.textContent += `[ERROR] 執行異常: ${e.message}
+`;
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.textContent = "開始執行跑分 (Run Now)";
+            }
+        }
+    
+        const treeCostData = {
+            clean: {
+                wall_ms: '0.570',
+                wall_us: '570 μs',
+                cpu_ms: '0.568',
+                user_ms: '0.173',
+                sys_ms: '0.395',
+                user_ratio: 30.5,
+                sys_ratio: 69.5,
+                rss: '9.39',
+                nodes: '45',
+                sub_nodes: '7 個目錄 / 38 個檔案',
+                syscalls: '~45 次 stat/read',
+                faults: '2 次 (0 次 Major)',
+                depth: 'D = 2 (模組子目錄)',
+                bytes: '252.2 KB',
+                tree: `FABEO/\n├── analysis/\n│   ├── __init__.py\n│   ├── exporter.py\n│   └── plotter.py\n├── core/\n│   ├── __init__.py\n│   ├── dem.py\n│   ├── dfa.py\n│   ├── metrics.py\n│   ├── msp.py\n│   └── pairing_group.py\n├── results/\n│   ├── benchmark_summary.csv\n│   └── benchmark_summary.json\n├── runner/\n│   ├── __init__.py\n│   └── benchmark_runner.py\n├── schemes/\n│   ├── __init__.py\n│   ├── abgw_cp.py\n│   ├── abgw_kp.py\n│   ├── base_abe.py\n│   ├── bsw_cp.py\n│   ├── fabeo_cp.py\n│   ├── fabeo_dfa.py\n│   ├── fabeo_kp.py\n│   └── fame_cp.py\n├── tests/\n│   ├── __init__.py\n│   ├── test_baselines.py\n│   ├── test_fabeo_cp.py\n│   ├── test_fabeo_dfa.py\n│   ├── test_fabeo_kp.py\n│   ├── test_msp.py\n│   └── test_pairing.py\n├── web/\n│   ├── index.html\n│   └── tree_cost.html\n├── .gitignore\n├── __init__.py\n├── main.py\n├── README.md\n├── requirements.txt\n├── tool.py\n└── web_server.py\n\n7 directories, 38 files`
+            },
+            full: {
+                wall_ms: '4.141',
+                wall_us: '4,141 μs',
+                cpu_ms: '3.873',
+                user_ms: '1.063',
+                sys_ms: '2.810',
+                user_ratio: 27.4,
+                sys_ratio: 72.6,
+                rss: '9.41',
+                nodes: '201',
+                sub_nodes: '69 個目錄 / 132 個檔案',
+                syscalls: '~200 次 stat/read',
+                faults: '3 次 (0 次 Major)',
+                depth: 'D = 5 (.git 物件深度遞迴)',
+                bytes: '502.8 KB',
+                tree: `FABEO/ (完整檢視含 .git 與 __pycache__)\n├── .git/ (67 個物件/參照)\n├── .gitignore\n├── README.md\n├── __init__.py\n├── __pycache__/ (27 個 .pyc 編譯檔)\n├── analysis/\n│   ├── __init__.py\n│   ├── exporter.py\n│   └── plotter.py\n├── core/\n│   ├── __init__.py\n│   ├── dem.py\n│   ├── dfa.py\n│   ├── metrics.py\n│   ├── msp.py\n│   └── pairing_group.py\n├── main.py\n├── requirements.txt\n├── results/\n│   ├── benchmark_summary.csv\n│   └── benchmark_summary.json\n├── runner/\n│   ├── __init__.py\n│   └── benchmark_runner.py\n├── schemes/\n│   ├── __init__.py\n│   ├── abgw_cp.py\n│   ├── abgw_kp.py\n│   ├── base_abe.py\n│   ├── bsw_cp.py\n│   ├── fabeo_cp.py\n│   ├── fabeo_dfa.py\n│   ├── fabeo_kp.py\n│   └── fame_cp.py\n├── tests/\n│   ├── __init__.py\n│   ├── test_baselines.py\n│   ├── test_fabeo_cp.py\n│   ├── test_fabeo_dfa.py\n│   ├── test_fabeo_kp.py\n│   ├── test_msp.py\n│   └── test_pairing.py\n├── tool.py\n├── web/\n│   ├── index.html\n│   └── tree_cost.html\n└── web_server.py\n\n69 directories, 132 files`
+            }
+        };
+
+        function setTreeCostMode(mode) {
+            const d = treeCostData[mode];
+            const btnClean = document.getElementById('tab6-btn-clean');
+            const btnFull = document.getElementById('tab6-btn-full');
+            if (btnClean && btnFull) {
+                if (mode === 'clean') {
+                    btnClean.className = 'px-3.5 py-2 rounded-lg bg-brand-900/50 text-purple-300 border border-brand-500/40 shadow-sm transition-all';
+                    btnFull.className = 'px-3.5 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-all';
+                } else {
+                    btnFull.className = 'px-3.5 py-2 rounded-lg bg-brand-900/50 text-purple-300 border border-brand-500/40 shadow-sm transition-all';
+                    btnClean.className = 'px-3.5 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-all';
+                }
+            }
+
+            const setEl = (id, val, isHtml) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (isHtml) el.innerHTML = val;
+                    else el.textContent = val;
+                }
+            };
+
+            setEl('t6-val-wall', `${d.wall_ms} <span class="text-sm font-normal text-slate-400">ms</span>`, true);
+            setEl('t6-sub-wall', `約 ${d.wall_us}`);
+            setEl('t6-val-cpu', `${d.cpu_ms} <span class="text-sm font-normal text-slate-400">ms</span>`, true);
+            setEl('t6-sub-cpu', `User: ${d.user_ms}ms | Sys: ${d.sys_ms}ms`);
+            setEl('t6-val-rss', `${d.rss} <span class="text-sm font-normal text-slate-400">MB</span>`, true);
+            setEl('t6-val-nodes', `${d.nodes} <span class="text-sm font-normal text-slate-400">節點</span>`, true);
+            setEl('t6-sub-nodes', d.sub_nodes);
+
+            setEl('t6-lbl-user-ratio', `${d.user_ratio}% (${d.user_ms} ms)`);
+            const barUser = document.getElementById('t6-bar-user');
+            if (barUser) barUser.style.width = `${d.user_ratio}%`;
+
+            setEl('t6-lbl-sys-ratio', `${d.sys_ratio}% (${d.sys_ms} ms)`);
+            const barSys = document.getElementById('t6-bar-sys');
+            if (barSys) barSys.style.width = `${d.sys_ratio}%`;
+
+            setEl('t6-metric-syscalls', d.syscalls);
+            setEl('t6-metric-faults', d.faults);
+            setEl('t6-max-depth', d.depth);
+            setEl('t6-val-bytes', d.bytes);
+            setEl('t6-tree-content', d.tree);
+        }
+
+        setTimeout(() => setTreeCostMode('clean'), 100);
+
+    </script>
+</body>
+</html>
