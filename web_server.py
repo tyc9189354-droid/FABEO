@@ -146,8 +146,8 @@ def evaluate_custom_policy(policy_str: str, user_attributes: List[str], curve_na
 
     schemes_eval = [
         {
-            "name": "FABEO CP (Ours)",
-            "is_ours": True,
+            "name": "FABEO CP (CCS 2022)",
+            "is_fabeo": True,
             "pairings": fabeo_pairings,
             "pairing_formula": f"tau + 2 = {tau} + 2 = {tau + 2}",
             "sk_g1": fabeo_sk_g1,
@@ -162,7 +162,7 @@ def evaluate_custom_policy(policy_str: str, user_attributes: List[str], curve_na
         },
         {
             "name": "ABGW CP (CCS'17)",
-            "is_ours": False,
+            "is_fabeo": False,
             "pairings": abgw_pairings,
             "pairing_formula": f"|I| + 2 = {I_len} + 2 = {I_len + 2}",
             "sk_g1": abgw_sk_g1,
@@ -177,7 +177,7 @@ def evaluate_custom_policy(policy_str: str, user_attributes: List[str], curve_na
         },
         {
             "name": "BSW CP (S&P'07)",
-            "is_ours": False,
+            "is_fabeo": False,
             "pairings": bsw_pairings,
             "pairing_formula": f"2|I| + 1 = 2({I_len}) + 1 = {2 * I_len + 1}",
             "sk_g1": bsw_sk_g1,
@@ -192,7 +192,7 @@ def evaluate_custom_policy(policy_str: str, user_attributes: List[str], curve_na
         },
         {
             "name": "FAME CP (CCS'17)",
-            "is_ours": False,
+            "is_fabeo": False,
             "pairings": fame_pairings,
             "pairing_formula": "6 (Constant)",
             "sk_g1": fame_sk_g1,
