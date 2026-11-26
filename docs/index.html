@@ -155,18 +155,23 @@
         <!-- MODULE 1: INTERACTIVE STEP-BY-STEP LAB (PRIMARY HIGHLIGHT) -->
         <!-- ========================================================================================= -->
         <section id="tab-lab" class="space-y-6">
-            <!-- Lab Configuration Card -->
-            <div class="glass-panel p-5 rounded-2xl space-y-4">
+            <!-- Lab Configuration Card (Interactive User Input Panel) -->
+            <div class="glass-panel p-5 rounded-2xl space-y-4 border border-purple-500/20 shadow-lg shadow-purple-950/20">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
                     <div>
                         <h2 class="text-base font-bold text-white flex items-center space-x-2">
                             <span>🧪 密碼學核心階段分步實驗室 (Interactive Step Lab)</span>
+                            <span class="text-[11px] font-normal text-purple-400 bg-purple-950/80 border border-purple-800/50 px-2 py-0.5 rounded-full">自訂輸入與即時推導</span>
                         </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">即時調度 Type-III 雙線性配對密碼引擎，逐步執行與監控 Setup、KeyGen、Encrypt、Decrypt 各階段之代數運算</p>
+                        <p class="text-xs text-slate-400 mt-0.5">提供使用者自訂明文、存取策略與解密屬性輸入，逐步執行代數運算並於終端即時輸出論文代碼與數學等式</p>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <span id="curveParamInfo" class="text-xs font-mono px-3 py-1 rounded-full bg-purple-950/80 text-purple-300 border border-purple-800/60">
-                            BLS12-381 (compressed, G1:48B, G2:96B, GT:288B)
+                        <span id="labLiveEvalBadge" class="text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center space-x-1.5 shadow-sm">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="labLiveEvalText">預判：授權滿足 ✓</span>
+                        </span>
+                        <span id="curveParamInfo" class="text-xs font-mono px-3 py-1 rounded-full bg-purple-950/80 text-purple-300 border border-purple-800/60 hidden sm:inline-block">
+                            BLS12-381 (128-bit)
                         </span>
                     </div>
                 </div>
@@ -188,9 +193,19 @@
                     </div>
 
                     <div class="md:col-span-3">
-                        <label class="block font-semibold text-slate-300 mb-1">機密明文測試訊息 (Plaintext Payload):</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="font-semibold text-slate-300">機密明文測試訊息 (Plaintext Payload M):</label>
+                            <div class="flex items-center space-x-1.5 text-[11px]">
+                                <span class="text-slate-500">快捷明文:</span>
+                                <button type="button" onclick="setLabMsgPreset('medical')" class="text-purple-400 hover:text-purple-300 hover:underline">醫療基因</button>
+                                <span class="text-slate-700">|</span>
+                                <button type="button" onclick="setLabMsgPreset('finance')" class="text-purple-400 hover:text-purple-300 hover:underline">金融審計</button>
+                                <span class="text-slate-700">|</span>
+                                <button type="button" onclick="setLabMsgPreset('iot')" class="text-purple-400 hover:text-purple-300 hover:underline">物聯網簽章</button>
+                            </div>
+                        </div>
                         <input type="text" id="labMsgInput" value="機密基因定序與病歷數據: Patient Genomic Profile #7829 (Stage-1, HLA-A*02:01)"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-500" placeholder="輸入欲加密保護之明文資料..." />
+                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-500" placeholder="輸入欲加密保護之自訂明文資料..." />
                     </div>
                 </div>
 
@@ -204,14 +219,27 @@
                                 <button type="button" onclick="setLabPreset('multi')" class="px-2 py-0.5 rounded bg-purple-900/40 text-purple-300 hover:bg-purple-900/70 border border-purple-500/30 transition-all">🔄 複用範本</button>
                             </div>
                         </div>
-                        <input type="text" id="labPolicyInput" value="(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-purple-200 focus:outline-none focus:border-brand-500" />
+                        <input type="text" id="labPolicyInput" oninput="updateLabInputEvaluation()" value="(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR"
+                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-purple-200 focus:outline-none focus:border-brand-500" placeholder="輸入自訂策略表達式，如 (A AND B) OR C..." />
+                        <div class="flex items-center space-x-1.5 mt-1.5 text-[11px] text-slate-400">
+                            <span class="text-slate-500">布林算子快速輸入:</span>
+                            <button type="button" onclick="insertPolicyOp(' AND ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">AND</button>
+                            <button type="button" onclick="insertPolicyOp(' OR ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">OR</button>
+                            <button type="button" onclick="insertPolicyOp(' ( ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">(</button>
+                            <button type="button" onclick="insertPolicyOp(' ) ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">)</button>
+                        </div>
                     </div>
 
                     <div>
-                        <label id="labAttrsLabel" class="block font-semibold text-slate-300 mb-1">解密者持有屬性集合 (User Key Attributes, 逗號分隔):</label>
-                        <input type="text" id="labAttrsInput" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none focus:border-brand-500" />
+                        <div class="flex justify-between items-center mb-1">
+                            <label id="labAttrsLabel" class="font-semibold text-slate-300">解密者持有屬性集合 (User Key Attributes, 逗號分隔):</label>
+                            <button type="button" onclick="clearLabAttrs()" class="text-[11px] text-slate-400 hover:text-slate-200 hover:underline">清空屬性</button>
+                        </div>
+                        <input type="text" id="labAttrsInput" oninput="updateLabInputEvaluation()" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY"
+                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none focus:border-brand-500" placeholder="輸入解密者屬性，如 MEDICINE:DOCTOR, DEPT:CARDIOLOGY..." />
+                        <div id="quickAttrPills" class="flex flex-wrap gap-1.5 mt-1.5 text-[11px]">
+                            <!-- Quick interactive toggle pills generated dynamically -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1298,6 +1326,12 @@
 
             if (tag === 'HEADER') {
                 formattedLine = `\n================================================================================\n${timeStr} 🚀 ${text}\n================================================================================\n`;
+            } else if (tag === 'CODE') {
+                formattedLine = `  ${timeStr} [CODE] 💻 ${text}\n`;
+            } else if (tag === 'INPUTS') {
+                formattedLine = `  ${timeStr} [INPUTS] 📥 ${text}\n`;
+            } else if (tag === 'EQUATION') {
+                formattedLine = `  ${timeStr} [EQUATION] 📐 論文數學等式與代數約束推導:\n${text}\n`;
             } else if (tag === 'SUCCESS') {
                 formattedLine = `${timeStr} [SUCCESS] ✓ ${text}\n`;
             } else if (tag === 'ERROR') {
@@ -1334,6 +1368,362 @@
             });
         }
 
+        // =========================================================================
+        // USER INPUT INTERACTION & REAL-TIME EVALUATION
+        // =========================================================================
+        function setLabMsgPreset(type) {
+            const input = document.getElementById('labMsgInput');
+            if (!input) return;
+            if (type === 'medical') {
+                input.value = "機密基因定序與病歷數據: Patient Genomic Profile #7829 (Stage-1, HLA-A*02:01)";
+            } else if (type === 'finance') {
+                input.value = "核心金融交易審計日誌: Transaction Batch #99214 ($4,250,000 USD SWIFT-Transfer)";
+            } else if (type === 'iot') {
+                input.value = "關鍵基礎設施物聯網感測簽章: Hydroelectric Turbine Node #12 (RPM: 3600, Temp: 42.5C)";
+            }
+            appendLabLog(`已更新自訂明文載荷 (Plaintext Payload M): "${input.value}"`, 'INPUTS');
+        }
+
+        function insertPolicyOp(op) {
+            const input = document.getElementById('labPolicyInput');
+            if (!input) return;
+            const start = input.selectionStart || input.value.length;
+            const end = input.selectionEnd || input.value.length;
+            const text = input.value;
+            input.value = text.substring(0, start) + op + text.substring(end);
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + op.length;
+            updateLabInputEvaluation();
+        }
+
+        function clearLabAttrs() {
+            const input = document.getElementById('labAttrsInput');
+            if (input) {
+                input.value = '';
+                updateLabInputEvaluation();
+                appendLabLog(`已清空解密者屬性集合 S = ∅`, 'INPUTS');
+            }
+        }
+
+        function toggleLabAttr(attr) {
+            const input = document.getElementById('labAttrsInput');
+            if (!input) return;
+            const raw = input.value || '';
+            let list = raw.split(',').map(a => a.trim()).filter(Boolean);
+            const normTarget = attr.trim().toUpperCase();
+            const idx = list.findIndex(a => a.toUpperCase() === normTarget);
+
+            if (idx >= 0) {
+                list.splice(idx, 1);
+            } else {
+                list.push(attr.trim());
+            }
+
+            input.value = list.join(', ');
+            updateLabInputEvaluation();
+            appendLabLog(`已切換屬性 [${attr}]: 當前屬性集 S = { ${list.join(', ')} }`, 'INPUTS');
+        }
+
+        function checkPolicySatisfaction(policyStr, userAttrs) {
+            if (!policyStr || !policyStr.trim()) return false;
+            const attrSet = new Set(userAttrs.map(a => a.trim().toUpperCase()).filter(Boolean));
+
+            let expr = policyStr.trim();
+            // Replace boolean keywords with javascript operators
+            expr = expr.replace(/\bAND\b/gi, ' && ').replace(/\bOR\b/gi, ' || ');
+
+            // Replace attribute identifiers
+            expr = expr.replace(/([A-Za-z0-9_:\-]+)/g, (match) => {
+                const u = match.toUpperCase();
+                if (u === 'TRUE' || u === 'FALSE') return u.toLowerCase();
+                return attrSet.has(u) ? 'true' : 'false';
+            });
+
+            try {
+                if (/^[truefals\s\(\)\&\|]+$/.test(expr)) {
+                    return Boolean(Function(`"use strict"; return (${expr});`)());
+                }
+            } catch (e) {
+                console.warn('Policy evaluation error:', e);
+            }
+            return false;
+        }
+
+        function updateLabInputEvaluation() {
+            const scheme = document.getElementById('labSchemeSelect').value;
+            const policy = (document.getElementById('labPolicyInput').value || '').trim();
+            const attrsRaw = (document.getElementById('labAttrsInput').value || '').trim();
+            const attrs = attrsRaw.split(',').map(a => a.trim()).filter(Boolean);
+
+            let satisfied = false;
+            if (scheme.includes('DFA')) {
+                satisfied = (policy.length > 0 && policy === attrsRaw);
+            } else {
+                satisfied = checkPolicySatisfaction(policy, attrs);
+            }
+
+            const badge = document.getElementById('labLiveEvalBadge');
+            const text = document.getElementById('labLiveEvalText');
+            if (badge && text) {
+                if (satisfied) {
+                    badge.className = "text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center space-x-1.5 shadow-sm";
+                    text.textContent = "預判：授權滿足 ✓";
+                } else {
+                    badge.className = "text-xs font-mono px-3 py-1 rounded-full bg-rose-950/80 text-rose-300 border border-rose-800/60 flex items-center space-x-1.5 shadow-sm";
+                    text.textContent = "預判：存取拒絕 ✗";
+                }
+            }
+
+            renderQuickAttrPills();
+            return satisfied;
+        }
+
+        function renderQuickAttrPills() {
+            const container = document.getElementById('quickAttrPills');
+            if (!container) return;
+            const scheme = document.getElementById('labSchemeSelect').value;
+            const raw = document.getElementById('labAttrsInput').value || '';
+            const currentAttrs = new Set(raw.split(',').map(a => a.trim().toUpperCase()).filter(Boolean));
+
+            let suggested = [];
+            if (scheme.includes('DFA')) {
+                suggested = ["CGTA", "CGTACGTA", "AAAA", "0101"];
+            } else if (scheme.includes('KP')) {
+                suggested = ["FACILITY:LAB_A", "CLEARANCE:LEVEL_3", "ROLE:RESEARCHER", "SEC:TOP_SECRET"];
+            } else {
+                suggested = ["MEDICINE:DOCTOR", "DEPT:CARDIOLOGY", "ROLE:DIRECTOR", "RESEARCH:GENOME", "ROLE:GUEST"];
+            }
+
+            container.innerHTML = suggested.map(attr => {
+                const active = currentAttrs.has(attr);
+                const cls = active 
+                    ? "bg-purple-900/60 text-purple-200 border-purple-500/60 font-semibold shadow-xs" 
+                    : "bg-slate-900/80 text-slate-400 border-slate-700/60 hover:text-slate-200 hover:border-slate-500";
+                const icon = active ? "✓" : "+";
+                return `<button type="button" onclick="toggleLabAttr('${attr}')" class="px-2 py-0.5 rounded-md border text-[10px] font-mono transition-all ${cls}">${icon} ${attr}</button>`;
+            }).join('');
+        }
+
+        function getStepEquations(scheme, step, policy, attrs, satisfied, curveName, spec) {
+            const isFabeo = scheme.startsWith('FABEO');
+            const N = attrs.length;
+            const clauses = Math.max(2, policy.split(/AND|OR/i).length);
+
+            if (step === 'setup') {
+                if (scheme === 'FABEO_CP') {
+                    return {
+                        code: "schemes/fabeo_cp.py :: FabeoCP.setup()",
+                        equation: `┌── 主私鑰純量抽取 (Master Secret Key) ───────────────────────────────────┐
+│  msk = ( alpha, b_0, b_1, ..., b_L ) ←$ Z_p^{1 + (L+1)}                 │
+├── 主公鑰群元素生成 (Master Public Key) ─────────────────────────────────┤
+│  mpk = ( g_1, g_2, Y = e(g_1, g_2)^alpha, { H_i = g_1^(b_i) }_{i=0}^L ) │
+└── 代數空間約束 (Group Order Boundary) ──────────────────────────────────┘
+   g_1 ∈ G_1 (${spec.sizes.g1}B), g_2 ∈ G_2 (${spec.sizes.g2}B), Y ∈ G_T (${spec.sizes.gt}B), |Z_p| = 256 bits`
+                    };
+                } else if (scheme === 'FABEO_KP') {
+                    return {
+                        code: "schemes/fabeo_kp.py :: FabeoKP.setup()",
+                        equation: `┌── 主私鑰純量抽取 (Master Secret Key) ───────────────────────────────────┐
+│  msk = ( alpha, a_0, a_1, ..., a_L ) ←$ Z_p^{L+2}                       │
+├── 主公鑰群元素生成 (Master Public Key) ─────────────────────────────────┤
+│  mpk = ( g_1, g_2, Y = e(g_1, g_2)^alpha, { K_i = g_2^(a_i) }_{i=0}^L ) │
+└── 代數特徵: Y ∈ G_T, G1/G2 Type-III 非對稱配對群 (${curveName})            │`
+                    };
+                } else if (scheme.includes('DFA')) {
+                    return {
+                        code: scheme === 'FABEO_DFA' ? "schemes/fabeo_dfa.py :: FabeoDFA.setup(alphabet)" : "schemes/waters_dfa.py :: WatersDFA.setup(alphabet)",
+                        equation: `┌── 狀態字母表與私鑰空間 (DFA State Machine Setup) ────────────────────────┐
+│  字母表: Σ = {A, C, G, T, 0, 1}, msk = ( alpha, {v_σ, h_σ}_{σ ∈ Σ} )    │
+├── 主公鑰群元素生成 ────────────────────────────────────────────────────┤
+│  mpk = ( g_1, g_2, e(g_1, g_2)^alpha, {g_1^(v_σ), g_2^(h_σ)}_{σ ∈ Σ} ) │
+└── 狀態轉移空間約束: 字母表維度 |Σ| = 6，狀態轉移函式 δ: Q × Σ → Q        │`
+                    };
+                } else {
+                    return {
+                        code: `schemes/${scheme.toLowerCase()}.py :: setup()`,
+                        equation: `┌── 基準方案初始化 (Standard Bilinear Group Setup) ─────────────────────┐
+│  抽取主秘密純量: alpha, beta ←$ Z_p,  生成元 g_1 ∈ G_1, g_2 ∈ G_2       │
+│  主公鑰: mpk = ( g_1, g_2, h = g_1^beta, Y = e(g_1, g_2)^alpha )       │
+└── 密碼學假設: Type-III 配對群 (${curveName}), 256-bit 橢圓曲線標量群    │`
+                    };
+                }
+            }
+
+            else if (step === 'keygen') {
+                if (scheme === 'FABEO_CP') {
+                    return {
+                        code: "schemes/fabeo_cp.py :: FabeoCP.keygen(msk, S)",
+                        equation: `┌── 私鑰盲化隨機因子抽取 (Random Blinding Scalar) ─────────────────────────┐
+│  r ←$ Z_p                                                               │
+├── 根私鑰組件 (Root Key Component) ──────────────────────────────────────┤
+│  sk_0 = g_2^(alpha + r · b_0) ∈ G_2                                     │
+├── 屬性相依金鑰組件 (Attribute-Dependent Components) ────────────────────┤
+│  ∀u ∈ S:  sk_{u,1} = g_1^(r · H(u)) ∈ G_1                               │
+├── 共享盲化傳遞基底 (Shared Blinding Base) ──────────────────────────────┤
+│  sk_{u,2} = g_2^r ∈ G_2                                                 │
+└── 私鑰結構封裝 ─────────────────────────────────────────────────────────┘
+   sk = ( S, sk_0, { sk_{u,1} }_{u ∈ S}, sk_{u,2} ) ∈ G_2 × G_1^{|S|} × G_2`
+                    };
+                } else if (scheme === 'FABEO_KP') {
+                    return {
+                        code: "schemes/fabeo_kp.py :: FabeoKP.keygen(msk, policy)",
+                        equation: `┌── 金鑰策略單調跨度矩陣 (LSSS / MSP for Key Policy) ────────────────────┐
+│  M ∈ Z_p^(n1 × n2),  秘密向量 s = (alpha, v_2, ..., v_n2)^T            │
+│  份額計算: λ_i = M_i · s,  盲化隨機數: r_i ←$ Z_p                      │
+├── 策略私鑰組件生成 ────────────────────────────────────────────────────┤
+│  sk_i = g_1^(λ_i + r_i · a_{ρ(i)}) ∈ G_1,  sk_0 = g_2^r ∈ G_2           │
+└── 特色: 跨度矩陣內嵌於私鑰中，密文僅需持有屬性群元素                   │`
+                    };
+                } else if (scheme.includes('DFA')) {
+                    return {
+                        code: scheme === 'FABEO_DFA' ? "schemes/fabeo_dfa.py :: FabeoDFA.keygen(msk, DFA)" : "schemes/waters_dfa.py :: WatersDFA.keygen(msk, DFA)",
+                        equation: `┌── 正規語言狀態機金鑰生成 (DFA Transition Embedding) ───────────────────┐
+│  針對狀態轉移 (q, σ, q') ∈ Δ，分配隨機數 r_t ←$ Z_p                     │
+│  轉移金鑰組件: K_{t,1} = g_1^(r_t · v_σ) · g_1^(alpha_q), K_{t,2} = g_2^(r_t)│
+└── 起始與接受狀態特殊盲化: 結合接受狀態集合 F 進行終止驗證組件盲化      │`
+                    };
+                } else {
+                    return {
+                        code: `schemes/${scheme.toLowerCase()}.py :: keygen(msk, S)`,
+                        equation: `┌── 屬性私鑰核發組件 ──────────────────────────────────────────────────┐
+│  抽取私鑰盲化因子: r ←$ Z_p                                             │
+│  主私鑰組件: sk_0 = g_1^(alpha + r · beta) ∈ G_1                        │
+│  屬性私鑰組件: ∀u ∈ S: sk_u = H(u)^r ∈ G_2 (共 ${N} 組)                 │
+└── 密鑰大小: |sk| = 1|G1| + ${N}|G2|                                    │`
+                    };
+                }
+            }
+
+            else if (step === 'encrypt') {
+                if (scheme === 'FABEO_CP') {
+                    return {
+                        code: "schemes/fabeo_cp.py :: FabeoCP.encrypt(mpk, policy, M)",
+                        equation: `┌── 單調跨度矩陣編譯 (LSSS / MSP Matrix Compilation) ─────────────────────┐
+│  M ∈ Z_p^(${clauses} × ${Math.max(2, clauses-1)}),  標籤映射函數 ρ: [n1] → U (屬性空間)   │
+├── 隨機秘密共享向量 (Secret Sharing Vector) ─────────────────────────────┤
+│  s = (s_0, v_2, ..., v_n2)^T ←$ Z_p^n2, 其中共享主秘密 s_0 = s          │
+│  份額分配: λ_i = M_i · s = ∑_{j=1}^n2 M_{i,j} · v_j  (i = 1, ..., n1)  │
+├── 盲化因子與載荷遮罩 (Blinding & Masking) ──────────────────────────────┤
+│  r_1, r_2, ..., r_n1 ←$ Z_p                                             │
+│  C_0 = M · e(g_1, g_2)^(alpha · s) ∈ G_T                                │
+│  C_1 = g_2^s ∈ G_2                                                      │
+├── 策略行密文組件 (Policy Row Components) ───────────────────────────────┤
+│  ∀i ∈ [n1]:  C_{i,1} = g_1^(λ_i + r_i · H(ρ(i))) ∈ G_1                  │
+│              C_{i,2} = g_2^(r_i) ∈ G_2                                  │
+└── 混合加密封裝 (DEM Payload) ───────────────────────────────────────────┘
+   K_DEM = KDF( e(g_1, g_2)^(alpha · s) ),  C_DEM = AES-256-GCM(K_DEM, Msg)`
+                    };
+                } else if (scheme === 'FABEO_KP') {
+                    return {
+                        code: "schemes/fabeo_kp.py :: FabeoKP.encrypt(mpk, S, M)",
+                        equation: `┌── 金鑰策略屬性密文生成 ────────────────────────────────────────────────┐
+│  抽取加密共享秘密: s ←$ Z_p                                            │
+│  密文主遮罩: C_0 = M · e(g_1, g_2)^(alpha · s) ∈ G_T                    │
+│  密文基底:   C_1 = g_1^s ∈ G_1                                          │
+│  屬性密文:   ∀u ∈ S: C_u = g_2^(s · a_u) ∈ G_2 (共 ${N} 組)             │
+└── 緊湊尺寸: 密文僅包含 |S| 個群元素，不隨存取策略複雜度膨脹           │`
+                    };
+                } else if (scheme.includes('DFA')) {
+                    return {
+                        code: scheme === 'FABEO_DFA' ? "schemes/fabeo_dfa.py :: FabeoDFA.encrypt(mpk, word, M)" : "schemes/waters_dfa.py :: WatersDFA.encrypt(mpk, word, M)",
+                        equation: `┌── 正規語言字串加密 ────────────────────────────────────────────────────┐
+│  字串序列: w = w_1 w_2 ... w_l, 隨機秘密 s_0, s_1, ..., s_l ←$ Z_p      │
+│  密文主載荷: C_0 = M · e(g_1, g_2)^(alpha · s_l) ∈ G_T                  │
+│  字元組件: ∀i ∈ [l]: C_{i,1} = g_1^(s_i - s_{i-1}) · g_1^(v_{w_i} · r)  │
+└── 狀態鏈接: 相鄰字元透過連續隨機秘密 s_i 形成密碼學鏈式相消約束        │`
+                    };
+                } else {
+                    return {
+                        code: `schemes/${scheme.toLowerCase()}.py :: encrypt(mpk, policy, M)`,
+                        equation: `┌── 策略矩陣加密運算 ──────────────────────────────────────────────────┐
+│  MSP 跨度矩陣 M ∈ Z_p^(n1 × n2), 份額 λ_i = M_i · s                    │
+│  主密文組件: C_0 = M · e(g_1, g_2)^(alpha · s) ∈ G_T                    │
+│  各子句組件: C_{i,1} = g_1^(λ_i) · H(ρ(i))^(-r_i), C_{i,2} = g_2^(r_i)  │
+└── 密文尺寸隨策略子句數線性增長: |ct| = 1|GT| + n1|G1| + n1|G2|           │`
+                    };
+                }
+            }
+
+            else if (step === 'decrypt') {
+                if (scheme === 'FABEO_CP') {
+                    if (satisfied) {
+                        return {
+                            code: "schemes/fabeo_cp.py :: FabeoCP.decrypt(mpk, ct, sk)",
+                            equation: `┌── 高斯消去法求解重建向量 (Gaussian Span Reconstruction) ────────────────┐
+│  求解向量 ω ∈ Z_p^n1 滿足: ∑_{i ∈ I} ω_i · M_i = (1, 0, ..., 0)^T        │
+│  跨度還原性質:  ∑_{i ∈ I} ω_i · λ_i = s                                 │
+├── FABEO 核心 3 次雙線性配對抵銷展開 (Pairing Cancellation) ─────────────┤
+│  Pairing 1:  e( ∏_{i∈I} C_{i,1}^ω_i, sk_{u,2} )                         │
+│              = e( g_1^s · g_1^(∑ ω_i r_i H(ρ(i))), g_2^r )              │
+│  Pairing 2:  e( ∏_{i∈I} sk_{ρ(i),1}^ω_i, ∏_{i∈I} C_{i,2} )              │
+│              = e( g_1^(r ∑ ω_i H(ρ(i))), g_2^(∑ r_i) )                  │
+│  Pairing 3:  e( C_1, sk_0 ) = e( g_2^s, g_2^(alpha + r · b_0) )         │
+├── 代數重構消去定理 (Bilinear Algebraic Reduction) ───────────────────────┤
+│  重構會話金鑰: K_DEM = [Pairing 3] / ( [Pairing 1] / [Pairing 2] )       │
+│              = e(g_1, g_2)^(alpha · s)                                  │
+│  * 特性驗證: 所有盲化因子 r, r_i 精準抵銷，配對次數恆定為 3 次 (O(1))!   │
+└── 明文還原驗證 (Payload Authentication) ────────────────────────────────┘
+   Msg = AES-256-GCM-Decrypt(K_DEM, C_DEM)`
+                        };
+                    } else {
+                        return {
+                            code: "schemes/fabeo_cp.py :: FabeoCP.decrypt(mpk, ct, sk)",
+                            equation: `┌── 高斯跨度求解失敗 (Linear Infeasibility) ──────────────────────────────┐
+│  求解方程: ∑_{i ∈ I} ω_i · M_i = (1, 0, ..., 0)^T                        │
+└── 矩陣不可張成: rank(M_I) < target dimension ==> ∄ ω 使得 ∑ ω_i · λ_i = s
+   代數約束: 盲化隨機因子無法抵銷，無法求得 e(g_1, g_2)^(alpha · s)
+   存取控制: 拒絕解密 (Access Denied)！明文維持保密保護狀態。`
+                        };
+                    }
+                } else if (scheme === 'FABEO_KP') {
+                    if (satisfied) {
+                        return {
+                            code: "schemes/fabeo_kp.py :: FabeoKP.decrypt(mpk, ct, sk)",
+                            equation: `┌── FABEO KP-ABE 常數 2 次配對消去 (Constant 2 Pairings) ───────────────┐
+│  Pairing 1: e( ∏_{i∈I} sk_i^ω_i, C_1 ) = e( g_1^(alpha + r·a_0), g_1^s )│
+│  Pairing 2: e( sk_0, ∏_{i∈I} C_{ρ(i)}^ω_i ) = e( g_2^r, g_2^(s · a_0) ) │
+├── 代數消去: K_DEM = [Pairing 1] / [Pairing 2] = e(g_1, g_2)^(alpha · s)│
+└── 創舉: 解密僅需 2 次配對，完全不受金鑰策略子句數與屬性數影響！         │`
+                        };
+                    } else {
+                        return {
+                            code: "schemes/fabeo_kp.py :: FabeoKP.decrypt(mpk, ct, sk)",
+                            equation: `┌── 金鑰策略跨度不滿足 (Policy Infeasible) ──────────────────────────────┐
+│  解密者密文屬性集合無法張成金鑰策略矩陣目標向量                        │
+└── 存取拒絕: 盲化因子無法消除，雙線性配對解密失敗 (Access Denied)       │`
+                        };
+                    }
+                } else if (scheme.includes('DFA')) {
+                    return {
+                        code: scheme === 'FABEO_DFA' ? "schemes/fabeo_dfa.py :: FabeoDFA.decrypt(mpk, ct, sk)" : "schemes/waters_dfa.py :: WatersDFA.decrypt(mpk, ct, sk)",
+                        equation: satisfied 
+                            ? `┌── DFA 狀態轉移路徑鏈式配對消去 ────────────────────────────────────────┐
+│  接受路徑: q_0 --w_1--> q_1 --w_2--> ... --w_l--> q_l ∈ F               │
+│  逐狀態配對抵銷中間隨機純量 s_i，最終聚合獲得 e(g_1, g_2)^(alpha · s_l)│
+└── 狀態機驗證相符: 成功抵達接受狀態集合，明文完整還原！                 │`
+                            : `┌── DFA 狀態機拒絕 (State Machine Rejection) ───────────────────────────┐
+│  字串序列無法沿轉移函式 δ 抵達任何接受狀態 (q_l ∉ F)                   │
+└── 存取拒絕: 盲化鏈中斷，無法聚合會話金鑰 (Access Denied)               │`
+                    };
+                } else if (scheme.includes('FAME')) {
+                    return {
+                        code: `schemes/${scheme.toLowerCase()}.py :: decrypt(mpk, ct, sk)`,
+                        equation: `┌── AC17 / FAME 固定 6 次配對解密 ───────────────────────────────────────┐
+│  配對計算: 2(k+1) = 2(2+1) = 6 次雙線性配對 (DLIN k=2)                  │
+│  代數乘積: e(sk_0, ct_0) · ∏ e(sk_i, ct_i) 於向量基底完成矩陣相消       │
+└── 特性: 配對次數恆定為 6 次，空間與計算開銷為 FABEO 之 2~3 倍          │`
+                    };
+                } else {
+                    return {
+                        code: `schemes/${scheme.toLowerCase()}.py :: decrypt(mpk, ct, sk)`,
+                        equation: `┌── 傳統 ABE 循序配對解密 ─────────────────────────────────────────────┐
+│  配對計算: ${scheme.includes('BSW') ? `2|I| + 1 = ${2*N + 1}` : `|I| + 2 = ${N + 2}`} 次雙線性配對 (隨屬性數線性成長)  │
+└── 效能瓶頸: 解密時間隨存取子句數呈線性膨脹，無常數配對優化             │`
+                    };
+                }
+            }
+        }
+
         function onLabSchemeChange() {
             const scheme = document.getElementById('labSchemeSelect').value;
             labState.scheme = scheme;
@@ -1358,6 +1748,7 @@
             }
 
             resetLab();
+            updateLabInputEvaluation();
             appendLabLog(`已切換評測方案為: ${scheme}，實驗室已重新初始化。`, 'SCHEME');
         }
 
@@ -1383,6 +1774,7 @@
                     document.getElementById('labAttrsInput').value = "ROLE:DOCTOR, RESEARCH:GENOME";
                 }
             }
+            updateLabInputEvaluation();
             appendLabLog(`已載入預設情境範本: [${type.toUpperCase()}]`, 'CONFIG');
         }
 
@@ -1429,10 +1821,10 @@
             const curveName = document.getElementById('globalCurveSelect').value;
             const spec = getCurveSizes();
             const s = spec.sizes;
-            const policy = document.getElementById('labPolicyInput').value.trim();
-            const attrsRaw = document.getElementById('labAttrsInput').value.trim();
-            const attrs = attrsRaw.split(',').map(a => a.trim()).filter(a => a.length > 0);
-            const plainMsg = document.getElementById('labMsgInput').value.trim();
+            const policy = (document.getElementById('labPolicyInput').value || '').trim();
+            const attrsRaw = (document.getElementById('labAttrsInput').value || '').trim();
+            const attrs = attrsRaw.split(',').map(a => a.trim()).filter(Boolean);
+            const plainMsg = (document.getElementById('labMsgInput').value || '').trim();
 
             const statusLabel = document.getElementById('labOutputStatus');
             if (statusLabel) {
@@ -1440,21 +1832,45 @@
                 statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300 font-mono animate-pulse';
             }
 
+            const satisfied = updateLabInputEvaluation();
+
+            // Try Python backend execution if running locally
+            let backendResult = null;
+            if (step === 'decrypt' || step === 'all') {
+                try {
+                    const res = await fetch('/api/crypto-demo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            scheme: scheme,
+                            policy: policy,
+                            attributes: attrs,
+                            message: plainMsg,
+                            curve: curveName,
+                            word: policy
+                        })
+                    });
+                    if (res.ok) {
+                        backendResult = await res.json();
+                    }
+                } catch (e) {
+                    // Backend offline (e.g. GitHub Pages), fallback gracefully to dynamic client-side engine
+                }
+            }
+
             // 1. SETUP
             if (step === 'setup') {
                 appendLabLog(`階段 ①: 執行密碼系統初始化 (Setup Phase)...`, 'HEADER');
-                appendLabLog(`選定雙線性配對群: ${curveName} (${spec.mode})`, 'SETUP');
-                appendLabLog(`正在初始化 Type-III 非對稱配對群 G1, G2, GT 與生成元...`, 'SETUP');
+                const eq = getStepEquations(scheme, 'setup', policy, attrs, satisfied, curveName, spec);
+                appendLabLog(eq.code, 'CODE');
+                appendLabLog(eq.equation, 'EQUATION');
 
                 await new Promise(r => setTimeout(r, 60));
-                const tSetup = +(0.025 + Math.random() * 0.008).toFixed(3);
+                const tSetup = backendResult && backendResult.timings ? backendResult.timings.setup_ms : +(0.025 + Math.random() * 0.008).toFixed(3);
                 const mpkBytes = 4 * s.g1 + 1 * s.g2 + 1 * s.gt;
 
                 labState.setupDone = true;
-
-                appendLabLog(`隨機抽取主私鑰秘密純量: alpha ∈ Z_p (order: 256 bits)`, 'MATH');
-                appendLabLog(`計算主公鑰組件: mpk = { g₁ ∈ G1, g₂ ∈ G2, e(g₁, g₂)^alpha ∈ GT }`, 'MATH');
-                appendLabLog(`系統初始化完成！耗時: ${tSetup} ms | mpk 尺寸: ${mpkBytes} Bytes`, 'SUCCESS');
+                appendLabLog(`系統初始化完成！耗時: ${tSetup} ms | mpk 公鑰尺寸: ${mpkBytes} Bytes | 曲線: ${curveName}`, 'SUCCESS');
 
                 document.getElementById('labBadgeSetup').className = 'w-2 h-2 rounded-full bg-emerald-400';
                 document.getElementById('labStatusTextSetup').textContent = '已就緒 ✓';
@@ -1471,17 +1887,16 @@
                 }
 
                 appendLabLog(`階段 ②: 執行金鑰核發 (KeyGen Phase)...`, 'HEADER');
-                appendLabLog(`註冊屬性集合 S = { ${attrs.join(', ')} } (共 ${attrs.length} 項)`, 'KEYGEN');
+                appendLabLog(`註冊使用者屬性集合 S = { ${attrs.join(', ')} } (共 ${attrs.length} 項)`, 'INPUTS');
+                const eq = getStepEquations(scheme, 'keygen', policy, attrs, satisfied, curveName, spec);
+                appendLabLog(eq.code, 'CODE');
+                appendLabLog(eq.equation, 'EQUATION');
 
                 await new Promise(r => setTimeout(r, 80));
-                const tKeyGen = +(0.030 + attrs.length * 0.005 + Math.random() * 0.005).toFixed(3);
+                const tKeyGen = backendResult && backendResult.timings ? backendResult.timings.keygen_ms : +(0.030 + attrs.length * 0.005 + Math.random() * 0.005).toFixed(3);
                 const skBytes = (attrs.length + 1) * s.g1 + 1 * s.g2;
 
                 labState.keygenDone = true;
-
-                appendLabLog(`隨機選取私鑰盲化隨機數: r ∈ Z_p`, 'MATH');
-                appendLabLog(`計算核心主私鑰: sk1 = g₁^alpha * H(|U|+1)^r ∈ G1`, 'MATH');
-                appendLabLog(`計算屬性組件: sk2[u] = H(u)^r ∈ G1 (共 ${attrs.length} 組) | sk3 = g₂^r ∈ G2`, 'MATH');
                 appendLabLog(`金鑰核發成功！耗時: ${tKeyGen} ms | sk 私鑰尺寸: ${skBytes} Bytes`, 'SUCCESS');
 
                 document.getElementById('labBadgeKeyGen').className = 'w-2 h-2 rounded-full bg-emerald-400';
@@ -1499,19 +1914,18 @@
                 }
 
                 appendLabLog(`階段 ③: 執行策略加密 (Encrypt Phase)...`, 'HEADER');
-                appendLabLog(`輸入目標策略: "${policy}"`, 'ENCRYPT');
+                appendLabLog(`輸入目標策略: "${policy}" | 明文載荷: "${plainMsg}"`, 'INPUTS');
+                const eq = getStepEquations(scheme, 'encrypt', policy, attrs, satisfied, curveName, spec);
+                appendLabLog(eq.code, 'CODE');
+                appendLabLog(eq.equation, 'EQUATION');
 
                 await new Promise(r => setTimeout(r, 80));
                 const clauses = Math.max(2, policy.split(/AND|OR/i).length);
-                const tEnc = +(0.040 + clauses * 0.008 + Math.random() * 0.006).toFixed(3);
+                const tEnc = backendResult && backendResult.timings ? backendResult.timings.encrypt_ms : +(0.040 + clauses * 0.008 + Math.random() * 0.006).toFixed(3);
                 const ctBytes = clauses * s.g1 + 2 * s.g2 + 1 * s.gt + plainMsg.length + 28;
 
                 labState.encryptDone = true;
-
-                appendLabLog(`編譯 MSP 存取矩陣 M ∈ Z_p^(${clauses} × ${Math.max(2, clauses-1)})`, 'MATH');
-                appendLabLog(`選取加密共享秘密 s₁ ∈ Z_p 與隨機向量 v ∈ Z_p^(n2-1)`, 'MATH');
-                appendLabLog(`計算對稱會話密鑰: K_DEM = e(g₁, g₂)^(alpha * s₁) ∈ GT`, 'MATH');
-                appendLabLog(`混合加密: AES-256-GCM 認證加密載荷數據 (Tag: 16B, IV: 12B)`, 'ENCRYPT');
+                appendLabLog(`混合加密: AES-256-GCM 認證加密載荷數據 (Tag: 16B, IV: 12B)`, 'MATH');
                 appendLabLog(`密文加密完成！耗時: ${tEnc} ms | 封裝總密文: ${ctBytes} Bytes`, 'SUCCESS');
 
                 document.getElementById('labBadgeEncrypt').className = 'w-2 h-2 rounded-full bg-emerald-400';
@@ -1532,35 +1946,28 @@
                     await runLabStep('encrypt');
                 }
 
-                appendLabLog(`階段 ④: 執行密文解密重構 (Decrypt Phase)...`, 'HEADER');
-                appendLabLog(`檢驗屬性集合 S 是否滿足存取策略 LSSS 跨度矩陣...`, 'DECRYPT');
+                appendLabLog(`階段 ④: 執行雙線性配對解密 (Decrypt Phase)...`, 'HEADER');
+                appendLabLog(`持有屬性 S = { ${attrs.join(', ')} } vs 存取策略 "${policy}"`, 'INPUTS');
+                const eq = getStepEquations(scheme, 'decrypt', policy, attrs, satisfied, curveName, spec);
+                appendLabLog(eq.code, 'CODE');
+                appendLabLog(eq.equation, 'EQUATION');
 
                 await new Promise(r => setTimeout(r, 100));
 
-                let satisfied = true;
-                if (attrsRaw.includes('ROLE:GUEST') || attrsRaw.includes('未授權') || attrsRaw.includes('AAAA')) {
-                    satisfied = false;
-                }
-
-                const tDec = +(0.050 + Math.random() * 0.010).toFixed(3);
+                const tDec = backendResult && backendResult.timings ? backendResult.timings.decrypt_ms : +(0.050 + Math.random() * 0.010).toFixed(3);
                 labState.decryptDone = true;
 
                 if (satisfied) {
-                    appendLabLog(`高斯消去法求解重建向量成功！找到權重係數向量 gamma_i`, 'MATH');
-                    appendLabLog(`啟動 Type-III 雙線性配對:`, 'DECRYPT');
-                    appendLabLog(`  Pairing #1: e(sk1, ct1)  [消去 alpha 盲化項]`, 'MATH');
-                    appendLabLog(`  Pairing #2: e(prod sk2^gamma_i, ct2)  [屬性代數重構]`, 'MATH');
-                    appendLabLog(`  Pairing #3: e(prod ct3^gamma_i, sk3)  [跨度項抵銷]`, 'MATH');
-                    appendLabLog(`  總配對次數: 3 次 (恆定常數，不隨屬性數線性膨脹!)`, 'MATH');
-                    appendLabLog(`成功重構對稱密鑰 K_DEM = e(g₁, g₂)^(alpha * s₁)`, 'DECRYPT');
+                    const pairingsCount = scheme === 'FABEO_KP' ? 2 : (scheme === 'FABEO_CP' ? 3 : (scheme.includes('FAME') ? 6 : (attrs.length + 2)));
+                    appendLabLog(`成功重構對稱密鑰 K_DEM = e(g₁, g₂)^(alpha · s) | 總配對次數: ${pairingsCount} 次`, 'MATH');
                     appendLabLog(`AES-256-GCM 標籤校驗通過！還原明文: "${plainMsg}"`, 'SUCCESS');
-                    appendLabLog(`🎉 解密成功！明文與原始資料 100% 完全相符！耗時: ${tDec} ms`, 'SUCCESS');
+                    appendLabLog(`🎉 解密成功！明文與原始輸入資料 100% 完全相符！耗時: ${tDec} ms`, 'SUCCESS');
 
                     document.getElementById('labBadgeDecrypt').className = 'w-2 h-2 rounded-full bg-emerald-400';
                     document.getElementById('labStatusTextDecrypt').textContent = '解密成功 ✓';
                     document.getElementById('labStatusTextDecrypt').className = 'font-mono text-[11px] text-emerald-400 font-bold';
                     document.getElementById('labStatDecrypt').innerHTML = `${tDec} <span class="text-[10px] text-emerald-400 font-normal">ms</span>`;
-                    document.getElementById('labSubDecrypt').textContent = `配對: 3 次 (常數)`;
+                    document.getElementById('labSubDecrypt').textContent = `配對: ${pairingsCount} 次 (${isFabeo ? '常數' : '基準'})`;
                 } else {
                     appendLabLog(`高斯消去法求解失敗：使用者屬性空間無法張成目標向量 (1, 0, ..., 0)^T`, 'ERROR');
                     appendLabLog(`密碼學盲化因子無法抵銷，存取控制拒絕解密 (Access Denied)!`, 'ERROR');
@@ -1715,6 +2122,7 @@
             calibrateClientHardware();
             updateCurveSettings();
             evaluatePolicyInteractive();
+            updateLabInputEvaluation();
             // Default to Step Lab
             switchTab('lab');
         });
