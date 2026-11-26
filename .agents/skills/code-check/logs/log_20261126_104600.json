@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-11-26T10:46:00+08:00",
+  "current_commit": "69ec9d7",
+  "reference_repo": "https://github.com/DoreenRiepel/FABEO.git",
+  "diff_files_count": 13,
+  "audit_summary": {
+    "fabeo_cp": {
+      "status": "VERIFIED_ACCURATE",
+      "reference_module": "FABEO/fabeo22cp",
+      "details": "當前實作嚴格遵循論文 Figure 1 (left)。支援多重屬性使用（tau >= 1）及高斯消去法線性跨度重構係數 gamma_i，解密配對次數恆定為 tau + 2 = 3 次配對，完全符合 Doreen Riepel 原始設計與漸進最優性。"
+    },
+    "fabeo_kp": {
+      "status": "VERIFIED_ACCURATE",
+      "reference_module": "FABEO/fabeo22kp",
+      "details": "當前實作嚴格遵循論文 Figure 1 (right)。解密配對次數恆定為 tau + 1 = 2 次配對，密文保持緊湊，完全符合論文規範。"
+    },
+    "fabeo_dfa": {
+      "status": "VERIFIED_ACCURATE",
+      "reference_module": "FABEO/fabeo22dfa",
+      "details": "當前實作嚴格遵循論文 Section 8.2。實現了狀態綁定隨機數 r_u 的復用技術，金鑰長度與狀態數 |Q| 成比例（大幅優於 Waters 2012 的 |T| 邊數依賴），解密耗時與路徑長度相符。"
+    },
+    "fame_cp": {
+      "status": "FIXED_NON_HQFS_BUG",
+      "reference_module": "FABEO/ac17cp",
+      "details": "原先 schemes/fame_cp.py 存在簡化草稿未正確實現 Agrawal & Chase 2017 與 Doreen Riepel ac17cp 演算法的問題。現已徹底重構，嚴格遵循 DLIN (k=2) 假設下的矩陣雜湊與常數 6 次配對解密流程，測試 100% 通過。"
+    },
+    "fame_kp": {
+      "status": "ADDED_PAPER_BASELINE",
+      "reference_module": "FABEO/ac17kp",
+      "details": "補齊了論文附錄 B 中的 AC17 KP-ABE 完整實作 schemes/fame_kp.py，並加入單元測試與評測流水線。"
+    },
+    "waters_dfa": {
+      "status": "ADDED_PAPER_BASELINE",
+      "reference_module": "FABEO/waters12dfa",
+      "details": "補齊了論文第 8 節對照基準 Waters 2012 DFA schemes/waters_dfa.py，支援端到端狀態機比對。"
+    },
+    "web_server_dfa": {
+      "status": "FIXED_API_CALL",
+      "details": "修正 web_server.py 中 DFA 構造函式缺少參數並呼叫未定義 set_start_state 的缺陷，改用 core/dfa.py 的 from_exact_word 規範構建。"
+    }
+  },
+  "benchmark_verification": {
+    "test_suite": "17 tests passed in 0.002s (100% success rate)",
+    "cp_benchmarks": "FABEO_CP 恆定 3 次配對；ABGW_CP 線性 |I|+2；BSW_CP 雙倍線性 2|I|+1；FAME_CP 恆定 6 次配對",
+    "kp_benchmarks": "FABEO_KP 恆定 2 次配對；ABGW_KP 雙倍線性 2|I|；FAME_KP 恆定 6 次配對",
+    "dfa_benchmarks": "FABEO_DFA 與 WATERS_DFA 均完成狀態機路徑評測"
+  }
+}

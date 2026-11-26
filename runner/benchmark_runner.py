@@ -2,7 +2,8 @@
 """
 ================================================================================
 FABEO: Benchmark Runner
-Replicates experiments in Section 7 (Figure 3 & Tables 3-6)
+Replicates experiments in Section 7 & 8 (Figure 3 & Tables 3-7)
+Supports FABEO CP/KP/DFA and baselines (ABGW, BSW, FAME/AC17, Waters DFA)
 ================================================================================
 """
 
@@ -18,6 +19,9 @@ from ..schemes.fabeo_dfa import FabeoDFA
 from ..schemes.abgw_cp import AbgwCP
 from ..schemes.abgw_kp import AbgwKP
 from ..schemes.bsw_cp import BswCP
+from ..schemes.fame_cp import FameCP
+from ..schemes.fame_kp import FameKP
+from ..schemes.waters_dfa import WatersDFA
 
 
 class BenchmarkRunner:
@@ -29,7 +33,7 @@ class BenchmarkRunner:
     def run_cp_benchmark(
         self,
         attribute_counts: List[int] = [10, 20, 50, 100],
-        schemes: List[str] = ["FABEO_CP", "ABGW_CP", "BSW_CP"],
+        schemes: List[str] = ["FABEO_CP", "ABGW_CP", "BSW_CP", "FAME_CP"],
         trials: int = 5,
     ) -> List[SchemeMetrics]:
         results = []
@@ -47,6 +51,8 @@ class BenchmarkRunner:
                     scheme = AbgwCP(self.group)
                 elif s_name == "BSW_CP":
                     scheme = BswCP(self.group)
+                elif s_name == "FAME_CP":
+                    scheme = FameCP(self.group)
                 else:
                     continue
 
@@ -113,6 +119,13 @@ class BenchmarkRunner:
                     ct_g2 = 1 + len(ct["ct1"])
                     ct_gt = 1
                     tau = 1
+                elif s_name == "FAME_CP":
+                    sk_g1 = len(sk["Kp"]) + sum(len(v) for v in sk["K"].values())
+                    sk_g2 = len(sk["K_0"])
+                    ct_g1 = sum(len(v) for v in ct["C"].values())
+                    ct_g2 = len(ct["C_0"])
+                    ct_gt = 1
+                    tau = 1
 
                 metric = SchemeMetrics(
                     scheme_name=s_name,
@@ -140,7 +153,7 @@ class BenchmarkRunner:
     def run_kp_benchmark(
         self,
         attribute_counts: List[int] = [10, 20, 50, 100],
-        schemes: List[str] = ["FABEO_KP", "ABGW_KP"],
+        schemes: List[str] = ["FABEO_KP", "ABGW_KP", "FAME_KP"],
         trials: int = 5,
     ) -> List[SchemeMetrics]:
         results = []
@@ -155,6 +168,8 @@ class BenchmarkRunner:
                     scheme = FabeoKP(self.group)
                 elif s_name == "ABGW_KP":
                     scheme = AbgwKP(self.group)
+                elif s_name == "FAME_KP":
+                    scheme = FameKP(self.group)
                 else:
                     continue
 
@@ -206,11 +221,18 @@ class BenchmarkRunner:
                     ct_g2 = 1
                     ct_gt = 1
                     tau = sk["tau"]
-                else:
+                elif s_name == "ABGW_KP":
                     sk_g1 = 0
                     sk_g2 = len(sk["sk1"]) + len(sk["sk2"])
                     ct_g1 = len(ct["ct1"]) + len(ct["ct2"])
                     ct_g2 = 0
+                    ct_gt = 1
+                    tau = 1
+                elif s_name == "FAME_KP":
+                    sk_g1 = sum(len(v) for v in sk["K"].values())
+                    sk_g2 = len(sk["K_0"])
+                    ct_g1 = sum(len(v) for v in ct["C"].values())
+                    ct_g2 = len(ct["C_0"])
                     ct_gt = 1
                     tau = 1
 
@@ -240,10 +262,10 @@ class BenchmarkRunner:
     def run_dfa_benchmark(
         self,
         string_lengths: List[int] = [10, 20, 50, 100],
+        schemes: List[str] = ["FABEO_DFA", "WATERS_DFA"],
         trials: int = 5,
     ) -> List[Dict[str, Any]]:
         results = []
-        scheme = FabeoDFA(self.group)
         alphabet = {"0", "1"}
         dfa = DFA.from_pattern_substring("101", alphabet)
 
@@ -251,40 +273,48 @@ class BenchmarkRunner:
             # String ending in 101
             x = ["0"] * (l - 3) + ["1", "0", "1"]
 
-            # Setup
-            with Timer() as t:
-                mpk, msk = scheme.setup(alphabet)
-            setup_ms = t.elapsed_ms
+            for s_name in schemes:
+                if s_name == "FABEO_DFA":
+                    scheme = FabeoDFA(self.group)
+                elif s_name == "WATERS_DFA":
+                    scheme = WatersDFA(self.group)
+                else:
+                    continue
 
-            # KeyGen
-            with Timer() as t:
-                sk = scheme.keygen(msk, dfa)
-            keygen_ms = t.elapsed_ms
+                # Setup
+                with Timer() as t:
+                    mpk, msk = scheme.setup(alphabet)
+                setup_ms = t.elapsed_ms
 
-            # Encrypt
-            self.group.profiler.reset()
-            with Timer() as t:
-                ct, d_enc = scheme.encrypt(mpk, x)
-            enc_ms = t.elapsed_ms
+                # KeyGen
+                with Timer() as t:
+                    sk = scheme.keygen(msk, dfa)
+                keygen_ms = t.elapsed_ms
 
-            # Decrypt
-            self.group.profiler.reset()
-            with Timer() as t:
-                d_dec = scheme.decrypt(mpk, ct, sk)
-            dec_ms = t.elapsed_ms
+                # Encrypt
+                self.group.profiler.reset()
+                with Timer() as t:
+                    ct, d_enc = scheme.encrypt(mpk, x)
+                enc_ms = t.elapsed_ms
 
-            ops_dec = self.group.profiler.snapshot()
-            correct = (d_enc == d_dec)
+                # Decrypt
+                self.group.profiler.reset()
+                with Timer() as t:
+                    d_dec = scheme.decrypt(mpk, ct, sk)
+                dec_ms = t.elapsed_ms
 
-            results.append({
-                "scheme_name": "FABEO_DFA",
-                "string_length": l,
-                "setup_time_ms": setup_ms,
-                "keygen_time_ms": keygen_ms,
-                "enc_time_ms": enc_ms,
-                "dec_time_ms": dec_ms,
-                "pairings_dec": ops_dec.get("pairings", 0),
-                "correctness": correct,
-            })
+                ops_dec = self.group.profiler.snapshot()
+                correct = (d_enc == d_dec)
+
+                results.append({
+                    "scheme_name": s_name,
+                    "string_length": l,
+                    "setup_time_ms": setup_ms,
+                    "keygen_time_ms": keygen_ms,
+                    "enc_time_ms": enc_ms,
+                    "dec_time_ms": dec_ms,
+                    "pairings_dec": ops_dec.get("pairings", 0),
+                    "correctness": correct,
+                })
 
         return results

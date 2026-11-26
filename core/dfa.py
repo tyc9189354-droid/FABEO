@@ -122,3 +122,24 @@ class DFA:
             transitions[(num_states, sym)] = num_states
 
         return cls(num_states, alphabet, transitions, accept_states)
+
+    @classmethod
+    def from_exact_word(cls, word: str, alphabet: Optional[Set[str]] = None) -> "DFA":
+        """
+        Construct a DFA that accepts exactly the string `word`.
+        """
+        m = len(word)
+        if m == 0:
+            raise ValueError("Word cannot be empty")
+
+        if alphabet is None:
+            alphabet = set(word) | {"a", "b", "c", "0", "1", "A", "C", "G", "T"}
+
+        num_states = m + 1
+        accept_states = {num_states}
+        transitions = {}
+
+        for idx, ch in enumerate(word):
+            transitions[(idx + 1, ch)] = idx + 2
+
+        return cls(num_states, alphabet, transitions, accept_states)

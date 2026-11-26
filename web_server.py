@@ -373,15 +373,11 @@ class FabeoEvaluationHandler(SimpleHTTPRequestHandler):
                 elif scheme == "FABEO_DFA":
                     word = req_json.get("word", "CGTA")
                     t0 = time.perf_counter_ns()
-                    alphabet = {"A", "C", "G", "T"}
+                    alphabet = set(word) | {"A", "C", "G", "T", "0", "1"}
                     mpk, msk = tool.dfa_setup(alphabet)
                     t_setup = (time.perf_counter_ns() - t0) / 1_000_000.0
 
-                    dfa = DFA(num_states=len(word) + 1)
-                    dfa.set_start_state(0)
-                    for idx, ch in enumerate(word):
-                        dfa.add_transition(idx, ch, idx + 1)
-                    dfa.set_accept_state(len(word))
+                    dfa = DFA.from_exact_word(word, alphabet)
 
                     t0 = time.perf_counter_ns()
                     sk = tool.dfa_keygen(msk, dfa)

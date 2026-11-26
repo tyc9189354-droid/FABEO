@@ -138,12 +138,12 @@ def cmd_benchmark(args):
     # DFA Benchmark
     print("\nExecuting DFA KP-ABE Benchmark...")
     dfa_results = runner.run_dfa_benchmark(string_lengths=attr_counts, trials=trials)
-    print("\n" + "-" * 70)
-    print(f"{'String Length':<15} | {'Enc Time(ms)':<15} | {'Dec Time(ms)':<15} | {'Pairings':<10}")
-    print("-" * 70)
+    print("\n" + "-" * 85)
+    print(f"{'Scheme':<15} | {'String Length':<15} | {'Enc Time(ms)':<15} | {'Dec Time(ms)':<15} | {'Pairings':<10}")
+    print("-" * 85)
     for r in dfa_results:
-        print(f"{r['string_length']:<15} | {r['enc_time_ms']:<15.2f} | {r['dec_time_ms']:<15.2f} | {r['pairings_dec']:<10}")
-    print("-" * 70 + "\n")
+        print(f"{r['scheme_name']:<15} | {r['string_length']:<15} | {r['enc_time_ms']:<15.2f} | {r['dec_time_ms']:<15.2f} | {r['pairings_dec']:<10}")
+    print("-" * 85 + "\n")
 
     # Export results
     results_dir = os.path.join(SCRIPT_DIR, "results")

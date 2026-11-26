@@ -2,10 +2,11 @@
 """
 ================================================================================
 Baseline: FAME CP-ABE Scheme (Agrawal & Chase, ACM CCS 2017)
+Official Paper Reference Implementation (AC17 CP-ABE, k=2)
 ================================================================================
 """
 
-from typing import Set, Dict, List, Tuple, Any
+from typing import Set, Dict, List, Tuple, Any, Optional
 from ..core.pairing_group import PairingGroup, Zp, G1Element, G2Element, GTElement
 from ..core.msp import MSP
 from .base_abe import BaseABE
@@ -13,119 +14,144 @@ from .base_abe import BaseABE
 
 class FameCP(BaseABE):
     """
-    FAME CP-ABE Scheme.
-    Uses DLIN tuples in G^3. Decryption uses 6 pairings (constant for tau=1).
+    AC17 / FAME CP-ABE Scheme for Monotone Span Programs under the k-linear (DLIN, k=2) assumption.
+    Decryption requires constant 2*(k+1) = 6 pairings.
     """
 
-    def __init__(self, group: PairingGroup):
+    def __init__(self, group: PairingGroup, assump_size: int = 2):
         super().__init__(group)
+        self.assump_size = assump_size
 
     def setup(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        # FAME master key has d1, d2, d3 and bases
-        d1 = self.group.random()
-        d2 = self.group.random()
-        d3 = self.group.random()
+        k = self.assump_size
+        A = [self.group.random() for _ in range(k)]
+        B = [self.group.random() for _ in range(k)]
+        k_vec = [self.group.random() for _ in range(k + 1)]
 
-        # Matrices / basis elements
-        a1 = self.group.random()
-        a2 = self.group.random()
+        g = self.group.g1
+        h = self.group.g2
+        e_gh = self.group.pair(g, h)
 
-        # e(g1, g2)^d3 is blinder
-        eg1g2_d3 = self.group.pair(self.group.g1, self.group.g2) ** d3
+        h_A = [h ** A[i] for i in range(k)] + [h]
+        g_k = [g ** k_vec[i] for i in range(k + 1)]
+        e_gh_kA = [e_gh ** (k_vec[i] * A[i] + k_vec[k]) for i in range(k)]
 
         mpk = {
             "type": "FAME_CP_MPK",
-            "a1": a1,
-            "a2": a2,
-            "eg1g2_d3": eg1g2_d3,
-            "g2_a1": self.group.g2 ** a1,
-            "g2_a2": self.group.g2 ** a2,
+            "assump_size": k,
+            "h_A": h_A,
+            "e_gh_kA": e_gh_kA,
         }
         msk = {
             "type": "FAME_CP_MSK",
-            "d1": d1,
-            "d2": d2,
-            "d3": d3,
-            "a1": a1,
-            "a2": a2,
+            "assump_size": k,
+            "g": g,
+            "h": h,
+            "g_k": g_k,
+            "A": A,
+            "B": B,
         }
         return mpk, msk
 
     def keygen(self, msk: Dict[str, Any], attributes: Set[str]) -> Dict[str, Any]:
-        d1, d2, d3 = msk["d1"], msk["d2"], msk["d3"]
-        a1, a2 = msk["a1"], msk["a2"]
-        r1 = self.group.random()
-        r2 = self.group.random()
+        k = self.assump_size
+        p = self.group.order
+        r = [self.group.random() for _ in range(k)]
+        r_sum = sum(int(x) for x in r) % p
 
-        # sk0 has 3 G1 elements
-        sk0 = [
-            (self.group.g1 ** d1) * (self.group.g1 ** (r1 * a1)),
-            (self.group.g1 ** d2) * (self.group.g1 ** (r2 * a2)),
-            (self.group.g1 ** d3) * (self.group.g1 ** (r1 + r2)),
-        ]
+        Br = [(int(msk["B"][i]) * int(r[i])) % p for i in range(k)] + [r_sum]
+        K_0 = [msk["h"] ** Br[i] for i in range(k + 1)]
 
-        # For each attribute: 3 G1 elements
-        sk_u = {}
+        K = {}
         for attr in attributes:
             u_clean = attr.strip().upper()
-            sigma_u = self.group.random()
-            h_u = self.group.hash_to_g1(u_clean)
-            sk_u[u_clean] = [
-                h_u ** (r1 / a1),
-                h_u ** (r2 / a2),
-                h_u ** (r1 + r2),
-            ]
+            key_i = []
+            sigma_attr = self.group.random()
+            for t in range(k):
+                prod = self.group.g1 ** 0
+                a_t = msk["A"][t]
+                inv_at = pow(int(a_t), -1, p)
+                for l in range(k + 1):
+                    h_val = self.group.hash_to_g1(f"{u_clean}{l}{t}")
+                    exp = (Br[l] * inv_at) % p
+                    prod = prod * (h_val ** exp)
+                prod = prod * (msk["g"] ** ((int(sigma_attr) * inv_at) % p))
+                key_i.append(prod)
+            key_i.append(msk["g"] ** (-int(sigma_attr)))
+            K[u_clean] = key_i
 
-        # 3 G2 elements
-        sk_g2 = [
-            self.group.g2 ** (r1 / a1),
-            self.group.g2 ** (r2 / a2),
-            self.group.g2 ** (r1 + r2),
-        ]
+        Kp = []
+        sigma = self.group.random()
+        for t in range(k):
+            prod = msk["g_k"][t]
+            inv_at = pow(int(msk["A"][t]), -1, p)
+            for l in range(k + 1):
+                h_val = self.group.hash_to_g1(f"01{l}{t}")
+                exp = (Br[l] * inv_at) % p
+                prod = prod * (h_val ** exp)
+            prod = prod * (msk["g"] ** ((int(sigma) * inv_at) % p))
+            Kp.append(prod)
+        Kp.append(msk["g_k"][k] * (msk["g"] ** (-int(sigma))))
 
         return {
             "type": "FAME_CP_SK",
-            "attributes": list(sk_u.keys()),
-            "sk0": sk0,
-            "sk_u": sk_u,
-            "sk_g2": sk_g2,
+            "attributes": list(K.keys()),
+            "K_0": K_0,
+            "K": K,
+            "Kp": Kp,
         }
 
     def encrypt(self, mpk: Dict[str, Any], policy_or_msp: Any) -> Tuple[Dict[str, Any], GTElement]:
         if isinstance(policy_or_msp, str):
             msp = MSP.from_policy_string(self.group, policy_or_msp)
-        else:
+        elif isinstance(policy_or_msp, MSP):
             msp = policy_or_msp
+        else:
+            raise TypeError("Expected policy string or MSP object")
 
-        n1, n2 = msp.n1, msp.n2
-        s1 = self.group.random()
-        s2 = self.group.random()
-
-        # ct0 has 3 G2 elements
-        ct0 = [
-            mpk["g2_a1"] ** s1,
-            mpk["g2_a2"] ** s2,
-            self.group.g2 ** (s1 + s2),
-        ]
-
-        # ct_rows: 3 G1 elements per row
-        ct_rows = []
+        k = self.assump_size
         p = self.group.order
-        for i in range(n1):
-            h_pi = self.group.hash_to_g1(msp.pi[i])
-            r_row = self.group.random()
-            ct_rows.append([
-                h_pi ** s1,
-                h_pi ** s2,
-                h_pi ** (s1 + s2),
-            ])
+        s = [self.group.random() for _ in range(k)]
+        s_sum = sum(int(x) for x in s) % p
 
-        d = mpk["eg1g2_d3"] ** (s1 + s2)
+        C_0 = [mpk["h_A"][i] ** s[i] for i in range(k)] + [mpk["h_A"][k] ** s_sum]
+
+        # Precompute hash table for MSP columns
+        hash_table = []
+        for j in range(msp.n2):
+            x_l = []
+            for l in range(k + 1):
+                y_t = []
+                for t in range(k):
+                    y_t.append(self.group.hash_to_g1(f"0{j+1}{l}{t}"))
+                x_l.append(y_t)
+            hash_table.append(x_l)
+
+        C = {}
+        for row_idx in range(msp.n1):
+            attr = msp.pi[row_idx]
+            row = msp.matrix[row_idx]
+            ct_row = []
+            for l in range(k + 1):
+                prod = self.group.g1 ** 0
+                for t in range(k):
+                    prod1 = self.group.hash_to_g1(f"{attr}{l}{t}")
+                    for j in range(len(row)):
+                        if row[j] != 0:
+                            prod1 = prod1 * (hash_table[j][l][t] ** row[j])
+                    prod = prod * (prod1 ** s[t])
+                ct_row.append(prod)
+            C[row_idx] = ct_row
+
+        d = self.group.gt ** 0
+        for i in range(k):
+            d = d * (mpk["e_gh_kA"][i] ** s[i])
+
         ct = {
             "type": "FAME_CP_CT",
             "msp": msp,
-            "ct0": ct0,
-            "ct_rows": ct_rows,
+            "C_0": C_0,
+            "C": C,
         }
         return ct, d
 
@@ -136,22 +162,19 @@ class FameCP(BaseABE):
         if coeff_map is None:
             raise ValueError("Attributes do not satisfy access policy!")
 
-        # 6 pairing operations in FAME:
-        # 3 pairings for sk0 with ct0
-        p1 = self.group.pair(sk["sk0"][0], ct["ct0"][0])
-        p2 = self.group.pair(sk["sk0"][1], ct["ct0"][1])
-        p3 = self.group.pair(sk["sk0"][2], ct["ct0"][2])
+        k = self.assump_size
+        prod1_GT = self.group.gt ** 0
+        prod2_GT = self.group.gt ** 0
 
-        # 3 pairings for aggregated ct_rows with sk_g2
-        agg_ct = [self.group.g1 ** 0, self.group.g1 ** 0, self.group.g1 ** 0]
-        for i, gamma_i in coeff_map.items():
-            for k in range(3):
-                agg_ct[k] = agg_ct[k] * (ct["ct_rows"][i][k] ** gamma_i)
+        for l in range(k + 1):
+            prod_H = self.group.g1 ** 0
+            prod_G = self.group.g1 ** 0
+            for row_idx, gamma in coeff_map.items():
+                attr = msp.pi[row_idx]
+                prod_H = prod_H * (sk["K"][attr][l] ** gamma)
+                prod_G = prod_G * (ct["C"][row_idx][l] ** gamma)
+            prod1_GT = prod1_GT * self.group.pair(sk["Kp"][l] * prod_H, ct["C_0"][l])
+            prod2_GT = prod2_GT * self.group.pair(prod_G, sk["K_0"][l])
 
-        q1 = self.group.pair(agg_ct[0], sk["sk_g2"][0])
-        q2 = self.group.pair(agg_ct[1], sk["sk_g2"][1])
-        q3 = self.group.pair(agg_ct[2], sk["sk_g2"][2])
-
-        # Reconstructed key
-        d = (p3 * q3) / (p1 * p2 * q1 * q2)
+        d = prod1_GT / prod2_GT
         return d

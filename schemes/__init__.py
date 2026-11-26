@@ -9,6 +9,8 @@ from .abgw_cp import AbgwCP
 from .abgw_kp import AbgwKP
 from .bsw_cp import BswCP
 from .fame_cp import FameCP
+from .fame_kp import FameKP
+from .waters_dfa import WatersDFA
 
 __all__ = [
     "BaseABE",
@@ -19,4 +21,6 @@ __all__ = [
     "AbgwKP",
     "BswCP",
     "FameCP",
+    "FameKP",
+    "WatersDFA",
 ]

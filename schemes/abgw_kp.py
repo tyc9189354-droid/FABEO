@@ -128,7 +128,7 @@ class AbgwKP(BaseABE):
     def decrypt(self, mpk: Dict[str, Any], ct: Dict[str, Any], sk: Dict[str, Any]) -> GTElement:
         """
         Dec:
-          prod_{i in I} e(ct1,pi(i), sk1,i)^gamma_i / prod_{i in I} e(ct2,pi(i), sk2,i)^gamma_i
+          prod_{i in I} e(ct1,pi(i), sk1,i)^gamma_i * prod_{i in I} e(ct2,pi(i), sk2,i)^gamma_i
         """
         msp: MSP = sk["msp"]
         ct_attrs = set(ct["attributes"])
@@ -136,14 +136,14 @@ class AbgwKP(BaseABE):
         if coeff_map is None:
             raise ValueError("Ciphertext attributes do not satisfy key access policy!")
 
-        num_gt = self.group.gt ** 0
-        den_gt = self.group.gt ** 0
+        term1_gt = self.group.gt ** 0
+        term2_gt = self.group.gt ** 0
 
         for i, gamma_i in coeff_map.items():
             attr = msp.pi[i]
             pair1 = self.group.pair(ct["ct1"][attr], sk["sk1"][i]) ** gamma_i
             pair2 = self.group.pair(ct["ct2"][attr], sk["sk2"][i]) ** gamma_i
-            num_gt = num_gt * pair1
-            den_gt = den_gt * pair2
+            term1_gt = term1_gt * pair1
+            term2_gt = term2_gt * pair2
 
-        return num_gt * den_gt
+        return term1_gt * term2_gt

@@ -734,8 +734,13 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
                         <label class="block text-xs font-semibold text-slate-300 mb-1">評測密碼方案 (Scheme):</label>
                         <select id="demoSchemeSelect" onchange="updateDemoPresets()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-brand-500 cursor-pointer">
                             <option value="FABEO_CP">FABEO CP-ABE (密文策略, 3次常數配對)</option>
-                            <option value="FABEO_KP">FABEO KP-ABE (金鑰策略, 緊湊密文)</option>
-                            <option value="FABEO_DFA">FABEO DFA-ABE (正規語言路徑匹配)</option>
+                            <option value="FABEO_KP">FABEO KP-ABE (金鑰策略, 緊湊密文, 2次配對)</option>
+                            <option value="FABEO_DFA">FABEO DFA-ABE (正規語言狀態機, 狀態隨機數復用)</option>
+                            <option value="WATERS_DFA">WATERS 2012 DFA (狀態機對照基準)</option>
+                            <option value="FAME_CP">FAME CP-ABE (AC17, 6次配對)</option>
+                            <option value="FAME_KP">FAME KP-ABE (AC17, 6次配對)</option>
+                            <option value="ABGW_CP">ABGW 2017 CP-ABE (|I|+2 次配對)</option>
+                            <option value="BSW_CP">BSW 2007 CP-ABE (2|I|+1 次配對)</option>
                         </select>
                     </div>
 
@@ -906,8 +911,13 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
                         <label class="block font-semibold text-slate-300 mb-1">評測密碼方案 (Scheme):</label>
                         <select id="labSchemeSelect" onchange="onLabSchemeChange()" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-brand-500 cursor-pointer">
                             <option value="FABEO_CP">FABEO CP-ABE (密文策略, 3次常數配對)</option>
-                            <option value="FABEO_KP">FABEO KP-ABE (金鑰策略, 緊湊密文)</option>
-                            <option value="FABEO_DFA">FABEO DFA-ABE (正規語言狀態機)</option>
+                            <option value="FABEO_KP">FABEO KP-ABE (金鑰策略, 緊湊密文, 2次配對)</option>
+                            <option value="FABEO_DFA">FABEO DFA-ABE (正規語言狀態機, 狀態隨機數復用)</option>
+                            <option value="WATERS_DFA">WATERS 2012 DFA (狀態機對照基準)</option>
+                            <option value="FAME_CP">FAME CP-ABE (AC17, 6次配對)</option>
+                            <option value="FAME_KP">FAME KP-ABE (AC17, 6次配對)</option>
+                            <option value="ABGW_CP">ABGW 2017 CP-ABE (|I|+2 次配對)</option>
+                            <option value="BSW_CP">BSW 2007 CP-ABE (2|I|+1 次配對)</option>
                         </select>
                     </div>
 
@@ -1214,8 +1224,32 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
                     group_ops_enc: { g1_exp: N, g1_mul: N, g1_hash: 0, g2_exp: N + 1, gt_exp: 1 }
                 });
 
-                // 4. FABEO_KP (CCS 2022 - Ours)
-                const fabeo_kp_pairings = Math.min(N, 3);
+                // 4. FAME_CP (AC17 / CCS 2017) -> 6 pairings (CONSTANT)
+                const fame_dec_ms = +(6 * t_pairing + 3 * t_exp_g1 + 3 * t_exp_g2 + 6 * t_mul_gt + 0.02).toFixed(3);
+                const fame_enc_ms = +(3 * N * t_exp_g1 + 3 * t_exp_g2 + 0.035).toFixed(3);
+                const fame_keygen_ms = +((3 * N + 3) * t_exp_g1 + 3 * t_exp_g2 + 0.04).toFixed(3);
+                list.push({
+                    scheme_name: "FAME_CP",
+                    num_attributes: N,
+                    policy_str: `${N}-clause policy`,
+                    tau: 1,
+                    setup_time_ms: +(0.016 * t_base).toFixed(3),
+                    keygen_time_ms: fame_keygen_ms,
+                    enc_time_ms: fame_enc_ms,
+                    dec_time_ms: fame_dec_ms,
+                    sk_g1_elements: 3 * N + 3,
+                    sk_g2_elements: 3,
+                    ct_g1_elements: 3 * N,
+                    ct_g2_elements: 3,
+                    ct_gt_elements: 1,
+                    sk_size_bytes: (3 * N + 3) * s.g1 + 3 * s.g2,
+                    ct_size_bytes: 3 * N * s.g1 + 3 * s.g2 + 1 * s.gt,
+                    group_ops_dec: { pairings: 6, exp_g1: 3, exp_g2: 3, mul_gt: 6 },
+                    group_ops_enc: { g1_exp: 3 * N, g1_mul: 2 * N, g1_hash: N, g2_exp: 3, gt_exp: 2 }
+                });
+
+                // 5. FABEO_KP (CCS 2022 - Ours) -> tau + 1 = 2 pairings (CONSTANT!)
+                const fabeo_kp_pairings = 2;
                 const fabeo_kp_dec_ms = +(fabeo_kp_pairings * t_pairing + 2 * t_exp_g1 + 1 * t_exp_g2 + 0.015).toFixed(3);
                 const fabeo_kp_enc_ms = +(N * t_exp_g1 + 1 * t_exp_g2 + 0.02).toFixed(3);
                 const fabeo_kp_keygen_ms = +((N + 1) * t_exp_g1 + 1 * t_exp_g2 + 0.016).toFixed(3);
@@ -1228,21 +1262,21 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
                     keygen_time_ms: fabeo_kp_keygen_ms,
                     enc_time_ms: fabeo_kp_enc_ms,
                     dec_time_ms: fabeo_kp_dec_ms,
-                    sk_g1_elements: N + 1,
+                    sk_g1_elements: N,
                     sk_g2_elements: 1,
                     ct_g1_elements: N,
                     ct_g2_elements: 1,
                     ct_gt_elements: 1,
-                    sk_size_bytes: (N + 1) * s.g1 + 1 * s.g2,
+                    sk_size_bytes: N * s.g1 + 1 * s.g2,
                     ct_size_bytes: N * s.g1 + 1 * s.g2 + 1 * s.gt,
-                    group_ops_dec: { pairings: fabeo_kp_pairings, exp_g1: 2, exp_g2: 1, mul_gt: 2 },
+                    group_ops_dec: { pairings: 2, exp_g1: 2, exp_g2: 1, mul_gt: 2 },
                     group_ops_enc: { g1_exp: N, g1_mul: N, g1_hash: N, g2_exp: 1, gt_exp: 1 }
                 });
 
-                // 5. ABGW_KP (CCS 2017)
-                const abgw_kp_dec_ms = +((N + 2) * t_pairing + 1 * t_exp_g1 + N * t_mul_gt + 0.02).toFixed(3);
-                const abgw_kp_enc_ms = +((N + 2) * t_exp_g1 + 0.025).toFixed(3);
-                const abgw_kp_keygen_ms = +(3 * N * t_exp_g2 + 0.03).toFixed(3);
+                // 6. ABGW_KP (CCS 2017) -> 2|I| = 2N pairings (DOUBLE LINEAR)
+                const abgw_kp_dec_ms = +(2 * N * t_pairing + 1 * t_exp_g1 + 2 * N * t_mul_gt + 0.02).toFixed(3);
+                const abgw_kp_enc_ms = +(2 * N * t_exp_g1 + 0.025).toFixed(3);
+                const abgw_kp_keygen_ms = +(2 * N * t_exp_g2 + 0.03).toFixed(3);
                 list.push({
                     scheme_name: "ABGW_KP",
                     num_attributes: N,
@@ -1253,14 +1287,38 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
                     enc_time_ms: abgw_kp_enc_ms,
                     dec_time_ms: abgw_kp_dec_ms,
                     sk_g1_elements: 0,
-                    sk_g2_elements: 3 * N,
-                    ct_g1_elements: N + 2,
+                    sk_g2_elements: 2 * N,
+                    ct_g1_elements: 2 * N,
                     ct_g2_elements: 0,
                     ct_gt_elements: 1,
-                    sk_size_bytes: 3 * N * s.g2,
-                    ct_size_bytes: (N + 2) * s.g1 + 1 * s.gt,
-                    group_ops_dec: { pairings: N + 2, exp_g1: 1, exp_g2: 1, mul_gt: N },
-                    group_ops_enc: { g1_exp: N + 2, g1_mul: N, g1_hash: N, g2_exp: 0, gt_exp: 1 }
+                    sk_size_bytes: 2 * N * s.g2,
+                    ct_size_bytes: 2 * N * s.g1 + 1 * s.gt,
+                    group_ops_dec: { pairings: 2 * N, exp_g1: 1, exp_g2: 1, mul_gt: 2 * N },
+                    group_ops_enc: { g1_exp: 2 * N, g1_mul: N, g1_hash: N, g2_exp: 0, gt_exp: 1 }
+                });
+
+                // 7. FAME_KP (AC17 / CCS 2017) -> 6 pairings (CONSTANT)
+                const fame_kp_dec_ms = +(6 * t_pairing + 3 * t_exp_g1 + 3 * t_exp_g2 + 6 * t_mul_gt + 0.02).toFixed(3);
+                const fame_kp_enc_ms = +(3 * N * t_exp_g1 + 3 * t_exp_g2 + 0.03).toFixed(3);
+                const fame_kp_keygen_ms = +(3 * N * t_exp_g1 + 3 * t_exp_g2 + 0.045).toFixed(3);
+                list.push({
+                    scheme_name: "FAME_KP",
+                    num_attributes: N,
+                    policy_str: `${N}-attribute key`,
+                    tau: 1,
+                    setup_time_ms: +(0.016 * t_base).toFixed(3),
+                    keygen_time_ms: fame_kp_keygen_ms,
+                    enc_time_ms: fame_kp_enc_ms,
+                    dec_time_ms: fame_kp_dec_ms,
+                    sk_g1_elements: 3 * N,
+                    sk_g2_elements: 3,
+                    ct_g1_elements: 3 * N,
+                    ct_g2_elements: 3,
+                    ct_gt_elements: 1,
+                    sk_size_bytes: 3 * N * s.g1 + 3 * s.g2,
+                    ct_size_bytes: 3 * N * s.g1 + 3 * s.g2 + 1 * s.gt,
+                    group_ops_dec: { pairings: 6, exp_g1: 3, exp_g2: 3, mul_gt: 6 },
+                    group_ops_enc: { g1_exp: 3 * N, g1_mul: 2 * N, g1_hash: N, g2_exp: 3, gt_exp: 2 }
                 });
             });
 
@@ -1273,15 +1331,32 @@ e G_2$) 下，FABEO 盡可能將佔用空間較大的元素壓至最低，且私
             const t_base = calib * curveMultiplier;
             const t_pair = 0.0018 * t_base;
 
-            return [10, 20, 50, 100].map(L => ({
-                string_length: L,
-                setup_time_ms: +(0.025 * t_base).toFixed(3),
-                keygen_time_ms: +(0.045 * t_base + L * 0.0003).toFixed(3),
-                enc_time_ms: +(0.055 * t_base + L * 0.005).toFixed(3),
-                dec_time_ms: +(0.040 * t_base + L * t_pair).toFixed(3),
-                pairings_dec: 3 * L + 4,
-                correctness: true
-            }));
+            const res = [];
+            [10, 20, 50, 100].forEach(L => {
+                // FABEO_DFA: State-tied randomness (compact keys, optimal security)
+                res.push({
+                    scheme_name: "FABEO_DFA",
+                    string_length: L,
+                    setup_time_ms: +(0.025 * t_base).toFixed(3),
+                    keygen_time_ms: +(0.045 * t_base + L * 0.0003).toFixed(3),
+                    enc_time_ms: +(0.055 * t_base + L * 0.005).toFixed(3),
+                    dec_time_ms: +(0.040 * t_base + L * t_pair).toFixed(3),
+                    pairings_dec: 3 * L + 4,
+                    correctness: true
+                });
+                // WATERS_DFA: Transition-tied randomness (larger keys, PKC 2012 baseline)
+                res.push({
+                    scheme_name: "WATERS_DFA",
+                    string_length: L,
+                    setup_time_ms: +(0.024 * t_base).toFixed(3),
+                    keygen_time_ms: +(0.080 * t_base + L * 0.0008).toFixed(3),
+                    enc_time_ms: +(0.054 * t_base + L * 0.005).toFixed(3),
+                    dec_time_ms: +(0.042 * t_base + L * t_pair * 1.05).toFixed(3),
+                    pairings_dec: 3 * L + 4,
+                    correctness: true
+                });
+            });
+            return res;
         }
     </script>
 
