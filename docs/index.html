@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FABEO: Fast Attribute-Based Encryption with Optimal Security</title>
+    <title>FABEO: Fast Attribute-Based Encryption with Optimal Sizes (ACM CCS 2022)</title>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -11,21 +15,22 @@
             darkMode: 'class',
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
+                    },
                     colors: {
-                        brand: {
-                            50: '#f5f3ff',
-                            100: '#ede9fe',
-                            500: '#8b5cf6',
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            900: '#4c1d95',
+                        slate: {
+                            850: '#141c2e',
+                            925: '#0b111e',
+                            950: '#070b14',
                         },
-                        dark: {
-                            bg: '#080c14',
-                            surface: '#0f172a',
-                            card: '#131d31',
-                            border: '#1e293b',
-                            hover: '#1e293b'
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
                         }
                     }
                 }
@@ -35,116 +40,142 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #080c14;
-            color: #f1f5f9;
+            color: #e2e8f0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         code, pre, .font-mono {
-            font-family: 'Fira Code', monospace;
+            font-family: 'JetBrains Mono', monospace;
         }
-        .glass-panel {
-            background: rgba(19, 29, 49, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-        }
-        .glass-panel:hover {
-            border-color: rgba(139, 92, 246, 0.35);
+        .panel {
+            background-color: #0d1424;
+            border: 1px solid #1e293b;
         }
         .stage-card {
-            background: linear-gradient(135deg, rgba(19, 29, 49, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #0b111e;
+            border: 1px solid #1e293b;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .stage-card:hover {
-            border-color: rgba(139, 92, 246, 0.5);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.15);
+            border-color: #3b82f6;
+            background-color: #0e1628;
+            transform: translateY(-1px);
         }
         .terminal-box {
-            background-color: #060910;
+            background-color: #050811;
             border: 1px solid #1e293b;
-            font-family: 'Fira Code', monospace;
+            font-family: 'JetBrains Mono', monospace;
         }
-        /* Custom scrollbar */
+        .code-input {
+            background-color: #090e1a;
+            border: 1px solid #1e293b;
+            color: #f1f5f9;
+            font-family: 'JetBrains Mono', monospace;
+            border-radius: 0.5rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .code-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+        }
+        /* Custom sleek scrollbar */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
         }
         ::-webkit-scrollbar-track {
             background: #080c14;
         }
         ::-webkit-scrollbar-thumb {
-            background: #27354f;
-            border-radius: 4px;
+            background: #1e293b;
+            border-radius: 3px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #3b4d6e;
+            background: #334155;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#080c14] text-slate-100 antialiased selection:bg-purple-500 selection:text-white">
+<body class="min-h-screen flex flex-col bg-[#080c14] text-slate-200 antialiased selection:bg-indigo-600 selection:text-white">
 
     <!-- Top Navigation Bar -->
-    <header class="border-b border-slate-800/80 bg-slate-950/80 sticky top-0 z-50 backdrop-blur-md">
+    <header class="border-b border-slate-800 bg-[#090e1a]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 ring-1 ring-white/10">
-                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="flex items-center space-x-3.5">
+                <!-- Cryptographic Lattice Emblem -->
+                <div class="w-9 h-9 rounded-lg bg-slate-900 border border-slate-700/80 flex items-center justify-center text-indigo-400 shadow-xs">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                 </div>
                 <div>
                     <div class="flex items-center space-x-2">
-                        <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-purple-300 via-indigo-200 to-emerald-300 bg-clip-text text-transparent">
+                        <span class="font-bold text-base sm:text-lg tracking-tight text-white">
                             FABEO Cryptosystem
                         </span>
-                        <span class="px-2 py-0.5 text-[11px] font-semibold bg-purple-950/80 text-purple-300 border border-purple-700/60 rounded-full">
+                        <span class="px-2 py-0.5 text-[11px] font-mono font-medium bg-indigo-950/70 text-indigo-300 border border-indigo-800/60 rounded">
                             ACM CCS 2022
                         </span>
+                        <span class="hidden md:inline-block px-2 py-0.5 text-[11px] font-mono text-slate-400 bg-slate-900 border border-slate-800 rounded">
+                            Artifact Evaluation
+                        </span>
                     </div>
-                    <p class="text-[11px] text-slate-400">Fast Attribute-Based Encryption with Optimal Security</p>
+                    <p class="text-xs text-slate-400 font-normal">Fast Attribute-Based Encryption with Optimal Sizes (Riepel & Wee)</p>
                 </div>
             </div>
 
             <!-- Global Curve & Server Status Controls -->
             <div class="flex items-center space-x-3 text-xs">
-                <div class="hidden sm:flex items-center space-x-2 bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1.5">
-                    <span class="text-slate-400">雙線性曲線:</span>
-                    <select id="globalCurveSelect" onchange="updateCurveSettings()" class="bg-transparent text-purple-300 font-mono font-medium focus:outline-none cursor-pointer">
-                        <option value="BLS12-381" class="bg-slate-900">BLS12-381 (128-bit)</option>
-                        <option value="BN254" class="bg-slate-900">BN254 (100-bit)</option>
-                        <option value="MNT224" class="bg-slate-900">MNT224 (96-bit Paper)</option>
+                <div class="hidden sm:flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 shadow-xs">
+                    <span class="text-slate-400 text-[11px]">雙線性曲線:</span>
+                    <select id="globalCurveSelect" onchange="updateCurveSettings()" class="bg-transparent text-indigo-300 font-mono font-medium focus:outline-none cursor-pointer">
+                        <option value="BLS12-381" class="bg-slate-900 text-slate-200">BLS12-381 (128-bit)</option>
+                        <option value="BN254" class="bg-slate-900 text-slate-200">BN254 (100-bit EVM)</option>
+                        <option value="MNT224" class="bg-slate-900 text-slate-200">MNT224 (96-bit Paper)</option>
                     </select>
                 </div>
 
-                <div class="hidden sm:flex items-center space-x-2 bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1.5">
-                    <span class="text-slate-400">群元素:</span>
+                <div class="hidden sm:flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 shadow-xs">
+                    <span class="text-slate-400 text-[11px]">群元素編碼:</span>
                     <select id="compressionSelect" onchange="updateCurveSettings()" class="bg-transparent text-emerald-300 font-mono font-medium focus:outline-none cursor-pointer">
-                        <option value="compressed" class="bg-slate-900">Compressed</option>
-                        <option value="uncompressed" class="bg-slate-900">Uncompressed</option>
+                        <option value="compressed" class="bg-slate-900 text-slate-200">Compressed</option>
+                        <option value="uncompressed" class="bg-slate-900 text-slate-200">Uncompressed</option>
                     </select>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Navigation Tabs (3 Clean Purpose-Driven Modules) -->
-    <nav class="border-b border-slate-800/80 bg-slate-950/40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 py-2.5">
-            <button onclick="switchTab('lab')" id="tab-btn-lab" class="tab-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-purple-300 bg-brand-900/50 border border-brand-500/50 shadow-sm flex items-center space-x-2">
-                <span>🧪</span>
-                <span>密碼學分步實驗室 (Step Lab)</span>
-            </button>
-            <button onclick="switchTab('benchmark')" id="tab-btn-benchmark" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 flex items-center space-x-2">
-                <span>📊</span>
-                <span>即時動態評測競技場 (Benchmark Arena)</span>
-            </button>
-            <button onclick="switchTab('calculator')" id="tab-btn-calculator" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 flex items-center space-x-2">
-                <span>🧮</span>
-                <span>存取策略編譯試算 (Policy Compiler)</span>
-            </button>
+    <!-- Main Navigation Tabs (Segmented Control) -->
+    <nav class="border-b border-slate-800 bg-[#070b14]/80 py-2">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div class="inline-flex p-1 space-x-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+                <button onclick="switchTab('lab')" id="tab-btn-lab" class="tab-btn active px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-100 bg-slate-800 border border-slate-700 shadow-xs flex items-center space-x-2">
+                    <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    <span>密碼學分步實驗室 (Interactive Lab)</span>
+                </button>
+                <button onclick="switchTab('benchmark')" id="tab-btn-benchmark" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent flex items-center space-x-2">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>效能基準評測 (Performance Benchmark)</span>
+                </button>
+                <button onclick="switchTab('calculator')" id="tab-btn-calculator" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent flex items-center space-x-2">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span>策略編譯試算 (Policy Compiler)</span>
+                </button>
+            </div>
+            <div class="hidden sm:flex items-center space-x-2 text-xs text-slate-400 font-mono">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span>Type-III Pairings Engine: Active</span>
+            </div>
         </div>
     </nav>
 
@@ -152,25 +183,28 @@
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <!-- ========================================================================================= -->
-        <!-- MODULE 1: INTERACTIVE STEP-BY-STEP LAB (PRIMARY HIGHLIGHT) -->
+        <!-- MODULE 1: INTERACTIVE STEP-BY-STEP LAB -->
         <!-- ========================================================================================= -->
-        <section id="tab-lab" class="space-y-6">
-            <!-- Lab Configuration Card (Interactive User Input Panel) -->
-            <div class="glass-panel p-5 rounded-2xl space-y-4 border border-purple-500/20 shadow-lg shadow-purple-950/20">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+        <section id="tab-lab" class="space-y-5">
+            <!-- Lab Configuration Card -->
+            <div class="panel p-5 rounded-xl space-y-4 shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
                     <div>
-                        <h2 class="text-base font-bold text-white flex items-center space-x-2">
-                            <span>🧪 密碼學核心階段分步實驗室 (Interactive Step Lab)</span>
-                            <span class="text-[11px] font-normal text-purple-400 bg-purple-950/80 border border-purple-800/50 px-2 py-0.5 rounded-full">自訂輸入與即時推導</span>
+                        <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>系統參數與測試輸入配置 (Cryptosystem Parameters & Inputs)</span>
                         </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">提供使用者自訂明文、存取策略與解密屬性輸入，逐步執行代數運算並於終端即時輸出論文代碼與數學等式</p>
+                        <p class="text-xs text-slate-400 mt-0.5">提供自訂明文、存取策略與解密屬性，支援逐步執行代數運算並於診斷終端即時輸出論文數學等式與驗證結果</p>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <span id="labLiveEvalBadge" class="text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center space-x-1.5 shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span id="labLiveEvalText">預判：授權滿足 ✓</span>
+                        <span id="labLiveEvalBadge" class="text-xs font-mono px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 flex items-center space-x-1.5 shadow-xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            <span id="labLiveEvalText">存取授權：滿足 (Authorized)</span>
                         </span>
-                        <span id="curveParamInfo" class="text-xs font-mono px-3 py-1 rounded-full bg-purple-950/80 text-purple-300 border border-purple-800/60 hidden sm:inline-block">
+                        <span id="curveParamInfo" class="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-900 text-slate-300 border border-slate-800 hidden sm:inline-block">
                             BLS12-381 (128-bit)
                         </span>
                     </div>
@@ -179,8 +213,8 @@
                 <!-- Input Parameters Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
                     <div>
-                        <label class="block font-semibold text-slate-300 mb-1">評測密碼方案 (Scheme):</label>
-                        <select id="labSchemeSelect" onchange="onLabSchemeChange()" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-purple-300 focus:outline-none focus:border-brand-500 cursor-pointer">
+                        <label class="block font-medium text-slate-300 mb-1">評測密碼方案 (Scheme):</label>
+                        <select id="labSchemeSelect" onchange="onLabSchemeChange()" class="code-input w-full px-3 py-2 text-xs font-mono text-indigo-300 focus:outline-none cursor-pointer">
                             <option value="FABEO_CP">FABEO CP-ABE (密文策略, 3次常數配對)</option>
                             <option value="FABEO_KP">FABEO KP-ABE (金鑰策略, 緊湊密文, 2次配對)</option>
                             <option value="FABEO_DFA">FABEO DFA-ABE (正規語言狀態機, 狀態隨機數復用)</option>
@@ -194,66 +228,66 @@
 
                     <div class="md:col-span-3">
                         <div class="flex justify-between items-center mb-1">
-                            <label class="font-semibold text-slate-300">機密明文測試訊息 (Plaintext Payload M):</label>
-                            <div class="flex items-center space-x-1.5 text-[11px]">
-                                <span class="text-slate-500">快捷明文:</span>
-                                <button type="button" onclick="setLabMsgPreset('medical')" class="text-purple-400 hover:text-purple-300 hover:underline">醫療基因</button>
+                            <label class="font-medium text-slate-300">機密明文測試訊息 (Plaintext Payload M):</label>
+                            <div class="flex items-center space-x-2 text-[11px]">
+                                <span class="text-slate-500">快速載入:</span>
+                                <button type="button" onclick="setLabMsgPreset('medical')" class="text-slate-400 hover:text-indigo-300 hover:underline">醫療基因</button>
                                 <span class="text-slate-700">|</span>
-                                <button type="button" onclick="setLabMsgPreset('finance')" class="text-purple-400 hover:text-purple-300 hover:underline">金融審計</button>
+                                <button type="button" onclick="setLabMsgPreset('finance')" class="text-slate-400 hover:text-indigo-300 hover:underline">金融審計</button>
                                 <span class="text-slate-700">|</span>
-                                <button type="button" onclick="setLabMsgPreset('iot')" class="text-purple-400 hover:text-purple-300 hover:underline">物聯網簽章</button>
+                                <button type="button" onclick="setLabMsgPreset('iot')" class="text-slate-400 hover:text-indigo-300 hover:underline">物聯網簽章</button>
                             </div>
                         </div>
                         <input type="text" id="labMsgInput" value="機密基因定序與病歷數據: Patient Genomic Profile #7829 (Stage-1, HLA-A*02:01)"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-brand-500" placeholder="輸入欲加密保護之自訂明文資料..." />
+                            class="code-input w-full px-3 py-2 text-xs font-mono text-white focus:outline-none" placeholder="輸入欲加密保護之自訂明文資料..." />
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label id="labPolicyLabel" class="font-semibold text-slate-300">存取控制策略 (Access Policy):</label>
-                            <div class="flex space-x-1.5 text-xs">
-                                <button type="button" onclick="setLabPreset('auth')" class="px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/70 border border-emerald-500/30 transition-all">✅ 授權範本</button>
-                                <button type="button" onclick="setLabPreset('unauth')" class="px-2 py-0.5 rounded bg-rose-900/40 text-rose-400 hover:bg-rose-900/70 border border-rose-500/30 transition-all">🚫 拒絕範本</button>
-                                <button type="button" onclick="setLabPreset('multi')" class="px-2 py-0.5 rounded bg-purple-900/40 text-purple-300 hover:bg-purple-900/70 border border-purple-500/30 transition-all">🔄 複用範本</button>
+                            <label id="labPolicyLabel" class="font-medium text-slate-300">存取控制策略 (Access Policy):</label>
+                            <div class="flex space-x-1 text-xs">
+                                <button type="button" onclick="setLabPreset('auth')" class="px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-950/40 text-emerald-300 hover:bg-emerald-950/70 border border-emerald-800/40 transition-colors">授權範本</button>
+                                <button type="button" onclick="setLabPreset('unauth')" class="px-2 py-0.5 rounded text-[11px] font-mono bg-rose-950/40 text-rose-300 hover:bg-rose-950/70 border border-rose-800/40 transition-colors">拒絕範本</button>
+                                <button type="button" onclick="setLabPreset('multi')" class="px-2 py-0.5 rounded text-[11px] font-mono bg-indigo-950/40 text-indigo-300 hover:bg-indigo-950/70 border border-indigo-800/40 transition-colors">複用範本</button>
                             </div>
                         </div>
                         <input type="text" id="labPolicyInput" oninput="updateLabInputEvaluation()" value="(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR ROLE:DIRECTOR"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-purple-200 focus:outline-none focus:border-brand-500" placeholder="輸入自訂策略表達式，如 (A AND B) OR C..." />
-                        <div class="flex items-center space-x-1.5 mt-1.5 text-[11px] text-slate-400">
-                            <span class="text-slate-500">布林算子快速輸入:</span>
-                            <button type="button" onclick="insertPolicyOp(' AND ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">AND</button>
-                            <button type="button" onclick="insertPolicyOp(' OR ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">OR</button>
-                            <button type="button" onclick="insertPolicyOp(' ( ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">(</button>
-                            <button type="button" onclick="insertPolicyOp(' ) ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 font-mono transition-all">)</button>
+                            class="code-input w-full px-3 py-2 text-xs font-mono text-indigo-200 focus:outline-none" placeholder="輸入自訂策略表達式，如 (A AND B) OR C..." />
+                        <div class="flex items-center space-x-1.5 mt-2 text-[11px] text-slate-400">
+                            <span class="text-slate-500">算子快速鍵:</span>
+                            <button type="button" onclick="insertPolicyOp(' AND ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 font-mono transition-colors">AND</button>
+                            <button type="button" onclick="insertPolicyOp(' OR ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 font-mono transition-colors">OR</button>
+                            <button type="button" onclick="insertPolicyOp(' ( ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 font-mono transition-colors">(</button>
+                            <button type="button" onclick="insertPolicyOp(' ) ')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-indigo-300 font-mono transition-colors">)</button>
                         </div>
                     </div>
 
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label id="labAttrsLabel" class="font-semibold text-slate-300">解密者持有屬性集合 (User Key Attributes, 逗號分隔):</label>
+                            <label id="labAttrsLabel" class="font-medium text-slate-300">解密者持有屬性集合 (User Key Attributes):</label>
                             <button type="button" onclick="clearLabAttrs()" class="text-[11px] text-slate-400 hover:text-slate-200 hover:underline">清空屬性</button>
                         </div>
                         <input type="text" id="labAttrsInput" oninput="updateLabInputEvaluation()" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none focus:border-brand-500" placeholder="輸入解密者屬性，如 MEDICINE:DOCTOR, DEPT:CARDIOLOGY..." />
-                        <div id="quickAttrPills" class="flex flex-wrap gap-1.5 mt-1.5 text-[11px]">
+                            class="code-input w-full px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none" placeholder="輸入解密者屬性，以逗號分隔..." />
+                        <div id="quickAttrPills" class="flex flex-wrap gap-1.5 mt-2 text-[11px]">
                             <!-- Quick interactive toggle pills generated dynamically -->
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 4 Stage Cards Grid (Setup -> KeyGen -> Encrypt -> Decrypt) -->
+            <!-- 4 Stage Execution Pipeline Cards Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- STEP 1: SETUP -->
-                <div class="stage-card p-4 rounded-2xl flex flex-col justify-between">
+                <div class="stage-card p-4 rounded-xl flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-1.5">
-                                <span>⚙️</span>
-                                <span>階段 ①: Setup</span>
-                            </span>
+                        <div class="flex justify-between items-center mb-2.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-indigo-300 border border-slate-700">01</span>
+                                <span class="text-xs font-semibold text-slate-200 uppercase tracking-wide">Setup</span>
+                            </div>
                             <div class="flex items-center space-x-1.5">
                                 <span id="labBadgeSetup" class="w-2 h-2 rounded-full bg-slate-600"></span>
                                 <span id="labStatusTextSetup" class="font-mono text-[11px] text-slate-400">待執行</span>
@@ -268,26 +302,29 @@
                             <div id="labStatSetup" class="text-xs font-bold text-white font-mono">-- <span class="text-[10px] text-slate-400 font-normal">ms</span></div>
                             <div id="labSubSetup" class="text-[10px] text-slate-400">mpk 大小: -- B</div>
                         </div>
-                        <button onclick="runLabStep('setup')" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-sm shadow-purple-500/20 cursor-pointer">
-                            執行 Setup
+                        <button onclick="runLabStep('setup')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            </svg>
+                            <span>執行 Setup</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- STEP 2: KEYGEN -->
-                <div class="stage-card p-4 rounded-2xl flex flex-col justify-between">
+                <div class="stage-card p-4 rounded-xl flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center space-x-1.5">
-                                <span>🔑</span>
-                                <span>階段 ②: KeyGen</span>
-                            </span>
+                        <div class="flex justify-between items-center mb-2.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-indigo-300 border border-slate-700">02</span>
+                                <span class="text-xs font-semibold text-slate-200 uppercase tracking-wide">KeyGen</span>
+                            </div>
                             <div class="flex items-center space-x-1.5">
                                 <span id="labBadgeKeyGen" class="w-2 h-2 rounded-full bg-slate-600"></span>
                                 <span id="labStatusTextKeyGen" class="font-mono text-[11px] text-slate-400">待核發</span>
                             </div>
                         </div>
-                        <p class="text-xs text-slate-300 mb-1">屬性私鑰生成與盲化</p>
+                        <p class="text-xs text-slate-300 mb-1">屬性私鑰生成與隨機盲化</p>
                         <p class="text-[11px] text-slate-400 font-mono">輸出: sk = (sk1, {sk2,u}, sk3)</p>
                     </div>
 
@@ -296,20 +333,23 @@
                             <div id="labStatKeyGen" class="text-xs font-bold text-white font-mono">-- <span class="text-[10px] text-slate-400 font-normal">ms</span></div>
                             <div id="labSubKeyGen" class="text-[10px] text-slate-400">sk 大小: -- B</div>
                         </div>
-                        <button onclick="runLabStep('keygen')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-sm shadow-indigo-500/20 cursor-pointer">
-                            核發 KeyGen
+                        <button onclick="runLabStep('keygen')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                            <span>核發 KeyGen</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- STEP 3: ENCRYPT -->
-                <div class="stage-card p-4 rounded-2xl flex flex-col justify-between">
+                <div class="stage-card p-4 rounded-xl flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center space-x-1.5">
-                                <span>🔒</span>
-                                <span>階段 ③: Encrypt</span>
-                            </span>
+                        <div class="flex justify-between items-center mb-2.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-indigo-300 border border-slate-700">03</span>
+                                <span class="text-xs font-semibold text-slate-200 uppercase tracking-wide">Encrypt</span>
+                            </div>
                             <div class="flex items-center space-x-1.5">
                                 <span id="labBadgeEncrypt" class="w-2 h-2 rounded-full bg-slate-600"></span>
                                 <span id="labStatusTextEncrypt" class="font-mono text-[11px] text-slate-400">待加密</span>
@@ -324,27 +364,30 @@
                             <div id="labStatEncrypt" class="text-xs font-bold text-white font-mono">-- <span class="text-[10px] text-slate-400 font-normal">ms</span></div>
                             <div id="labSubEncrypt" class="text-[10px] text-slate-400">密文大小: -- B</div>
                         </div>
-                        <button onclick="runLabStep('encrypt')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all shadow-sm shadow-blue-500/20 cursor-pointer">
-                            執行 Encrypt
+                        <button onclick="runLabStep('encrypt')" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span>執行 Encrypt</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- STEP 4: DECRYPT -->
-                <div class="stage-card p-4 rounded-2xl flex flex-col justify-between">
+                <div class="stage-card p-4 rounded-xl flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
-                                <span>🔓</span>
-                                <span>階段 ④: Decrypt</span>
-                            </span>
+                        <div class="flex justify-between items-center mb-2.5">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-indigo-300 border border-slate-700">04</span>
+                                <span class="text-xs font-semibold text-slate-200 uppercase tracking-wide">Decrypt</span>
+                            </div>
                             <div class="flex items-center space-x-1.5">
                                 <span id="labBadgeDecrypt" class="w-2 h-2 rounded-full bg-slate-600"></span>
                                 <span id="labStatusTextDecrypt" class="font-mono text-[11px] text-slate-400">待解密</span>
                             </div>
                         </div>
                         <p class="text-xs text-slate-300 mb-1">配對抵銷與明文還原</p>
-                        <p class="text-[11px] text-slate-400 font-mono">配對運算: tau + 2 = 3 次配對</p>
+                        <p class="text-[11px] text-slate-400 font-mono">配對運算: tau + 2 = 3 次常數配對</p>
                     </div>
 
                     <div class="pt-3 border-t border-slate-800/80 mt-3 flex items-center justify-between">
@@ -352,103 +395,130 @@
                             <div id="labStatDecrypt" class="text-xs font-bold text-white font-mono">-- <span class="text-[10px] text-slate-400 font-normal">ms</span></div>
                             <div id="labSubDecrypt" class="text-[10px] text-slate-400">配對次數: -- 次</div>
                         </div>
-                        <button onclick="runLabStep('decrypt')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm shadow-emerald-500/20 cursor-pointer">
-                            執行 Decrypt
+                        <button onclick="runLabStep('decrypt')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                            </svg>
+                            <span>執行 Decrypt</span>
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Global Action Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 glass-panel px-5 py-3 rounded-2xl">
-                <div class="flex items-center space-x-2 text-xs text-slate-300">
-                    <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-                    <span>支援階段性單步調試，亦可點擊右側按鈕自動化循序執行全流程</span>
+            <div class="panel px-4 py-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                <div class="flex items-center space-x-2 text-xs text-slate-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                    <span>支援單一階段單步調試，亦可點擊右側按鈕自動化連續執行全流程</span>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button onclick="runLabStep('all')" id="labBtnAll" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-purple-500/20 transition-all flex items-center space-x-1.5 cursor-pointer">
-                        <span>⚡</span>
-                        <span>一鍵連續執行全流程 (Auto Run)</span>
+                    <button onclick="runLabStep('all')" id="labBtnAll" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-xs flex items-center space-x-1.5 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>連續執行全流程 (Auto Run)</span>
                     </button>
-                    <button onclick="resetLab()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all cursor-pointer">
-                        🔄 重設狀態
+                    <button onclick="resetLab()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors border border-slate-700/80 cursor-pointer flex items-center space-x-1">
+                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>重設狀態</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Crypto Terminal OutputBox (Developer Experience) -->
-            <div class="terminal-box rounded-2xl overflow-hidden shadow-2xl">
+            <!-- Crypto Terminal Diagnostic Box -->
+            <div class="terminal-box rounded-xl overflow-hidden shadow-lg">
                 <!-- Terminal Header -->
-                <div class="bg-slate-900/90 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
+                <div class="bg-slate-900/90 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-2.5">
                         <div class="flex space-x-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block"></span>
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block"></span>
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span>
                         </div>
-                        <span class="text-xs text-slate-400 font-mono pl-2">FABEO Crypto Engine v2.0 - Live Execution Terminal</span>
+                        <span class="text-xs text-slate-300 font-mono font-medium pl-2">DIAGNOSTIC TRACE & ALGEBRAIC EQUATIONS (CCS 2022 ENGINE)</span>
                     </div>
 
                     <div class="flex items-center space-x-2 text-xs">
-                        <span id="labOutputStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-mono">READY</span>
-                        <button onclick="copyLabOutput()" id="btnCopyLabOutput" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono transition-all cursor-pointer">
-                            📋 複製日誌
+                        <span id="labOutputStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">READY</span>
+                        <button onclick="copyLabOutput()" id="btnCopyLabOutput" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono border border-slate-700 transition-colors cursor-pointer flex items-center space-x-1">
+                            <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            <span>複製日誌</span>
                         </button>
-                        <button onclick="clearLabOutput()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono transition-all cursor-pointer">
-                            🗑️ 清空
+                        <button onclick="clearLabOutput()" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono border border-slate-700 transition-colors cursor-pointer flex items-center space-x-1">
+                            <svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>清空</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Terminal Body OutputBox -->
-                <div class="p-4 bg-[#060910]">
-                    <pre id="labOutputBox" class="text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed max-h-[380px] overflow-y-auto selection:bg-purple-900 selection:text-purple-200">
+                <div class="p-4 bg-[#050811]">
+                    <pre id="labOutputBox" class="text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed max-h-[380px] overflow-y-auto selection:bg-indigo-900 selection:text-indigo-200">
 ================================================================================
-  FABEO: Fast Attribute-Based Encryption with Optimal Security (ACM CCS 2022)
-  互動式密碼學分步實驗室就緒 (Interactive Step-by-Step Crypto Lab)
+  FABEO Cryptographic Evaluation Environment — ACM CCS 2022
+  Fast Attribute-Based Encryption with Optimal Sizes (Riepel & Wee)
 ================================================================================
-[系統狀態] Type-III 雙線性配對引擎就緒 | 曲線: BLS12-381 (128-bit security)
-[提示] 請由上方選定密碼方案與測試策略，依序點擊「Setup」→「KeyGen」→「Encrypt」→「Decrypt」
-      或點擊「一鍵連續執行全流程」，終端機將即時顯示群運算元、金鑰盲化與配對抵銷過程。
-</pre>
+  [Engine]     Type-III Bilinear Group Engine Initialized
+  [Curve]      BLS12-381 (128-bit Security Level, Compressed G1/G2)
+  [Security]   Adaptive IND-CPA Security under Standard Assumptions (k-Lin / SXDH)
+  [Mode]       Interactive Step-by-Step Workbench & Real-time Algebraic Trace
+--------------------------------------------------------------------------------
+  Ready. Select scheme and parameters above, then trigger execution steps:
+    - Step 01: Setup    -> Initialize system public parameters (mpk, msk)
+    - Step 02: KeyGen   -> Derive user attribute secret key components (sk)
+    - Step 03: Encrypt  -> Compile access policy to LSSS and encapsulate payload (ct)
+    - Step 04: Decrypt  -> Evaluate bilinear pairings to reconstruct plaintext (M)
+================================================================================</pre>
                 </div>
             </div>
         </section>
 
         <!-- ========================================================================================= -->
-        <!-- MODULE 2: DYNAMIC BENCHMARK ARENA (ALL CHARTS & COMPARISON MATRIX) -->
+        <!-- MODULE 2: PERFORMANCE BENCHMARK SUITE -->
         <!-- ========================================================================================= -->
-        <section id="tab-benchmark" class="hidden space-y-6">
+        <section id="tab-benchmark" class="hidden space-y-5">
             <!-- Hardware Calibration Bar -->
-            <div class="glass-panel p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="panel p-5 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
                 <div>
-                    <h2 class="text-base font-bold text-white flex items-center space-x-2">
-                        <span>📊 即時動態評測競技場 (Dynamic Benchmark Arena)</span>
+                    <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span>動態效能評測與基準比對 (Performance Benchmark Suite)</span>
                     </h2>
                     <p class="text-xs text-slate-400 mt-1">
-                        依據當前用戶端 CPU 即時算力動態演算，精確重現論文第 7 節與第 8 節對照基準 (ABGW, BSW, FAME/AC17, Waters DFA)
+                        依據當前用戶端 CPU 算力動態演算校準，重現論文第 7 節與第 8 節對照基準 (ABGW, BSW, FAME/AC17, Waters DFA)
                     </p>
                 </div>
                 <div class="flex items-center space-x-3 text-xs">
                     <span id="benchLogStatus" class="font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-800/40">
                         CPU 算力校準: 1.00x baseline
                     </span>
-                    <button onclick="recalculateAllDynamicBenchmarks(true)" class="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition-all shadow-md shadow-brand-500/20 cursor-pointer">
-                        🚀 重新跑分校準
+                    <button onclick="recalculateAllDynamicBenchmarks(true)" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>重新校準跑分</span>
                     </button>
                 </div>
             </div>
 
             <!-- Primary 4 Live Charts Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- CHART 1: Decryption Time -->
-                <div class="glass-panel p-5 rounded-2xl">
+                <div class="panel p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                            <span>⚡</span>
-                            <span>解密耗時對比 (Decryption Time vs Attributes)</span>
+                        <h3 class="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
+                            <span>解密耗時對比 (Decryption Latency vs Attributes)</span>
                         </h3>
-                        <span class="text-[10px] font-mono text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/40">FABEO 恆定常數</span>
+                        <span class="text-[10px] font-mono text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">常數 O(1) 耗時</span>
                     </div>
                     <div class="h-64">
                         <canvas id="decryptionTimeChart"></canvas>
@@ -456,13 +526,12 @@
                 </div>
 
                 <!-- CHART 2: Pairing Operations Count -->
-                <div class="glass-panel p-5 rounded-2xl">
+                <div class="panel p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                            <span>🔗</span>
+                        <h3 class="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
                             <span>解密雙線性配對次數 (Pairings Count)</span>
                         </h3>
-                        <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">常數 3 次 vs 線性增長</span>
+                        <span class="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">常數 3 次 vs 線性增長</span>
                     </div>
                     <div class="h-64">
                         <canvas id="pairingsCountChart"></canvas>
@@ -470,13 +539,12 @@
                 </div>
 
                 <!-- CHART 3: Ciphertext & Key Storage Size -->
-                <div class="glass-panel p-5 rounded-2xl">
+                <div class="panel p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                            <span>💾</span>
+                        <h3 class="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
                             <span>密文儲存尺寸對比 (Ciphertext Storage Size)</span>
                         </h3>
-                        <span class="text-[10px] font-mono text-blue-400 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/40">位元組開銷 (Bytes)</span>
+                        <span class="text-[10px] font-mono text-blue-300 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-800/40">位元組開銷 (Bytes)</span>
                     </div>
                     <div class="h-64">
                         <canvas id="ctSizeChart"></canvas>
@@ -484,13 +552,12 @@
                 </div>
 
                 <!-- CHART 4: DFA Benchmark -->
-                <div class="glass-panel p-5 rounded-2xl">
+                <div class="panel p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                            <span>🤖</span>
+                        <h3 class="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
                             <span>DFA 狀態機字串匹配評測 (FABEO vs Waters)</span>
                         </h3>
-                        <span class="text-[10px] font-mono text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">Section 8.2</span>
+                        <span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">Section 8.2</span>
                     </div>
                     <div class="h-64">
                         <canvas id="dfaChart"></canvas>
@@ -499,48 +566,52 @@
             </div>
 
             <!-- Unified Performance Comparison Matrix Table -->
-            <div class="glass-panel p-5 rounded-2xl space-y-3">
+            <div class="panel p-5 rounded-xl space-y-3 shadow-sm">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                        <span>📋</span>
+                    <h3 class="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
                         <span>多維度密碼方案即時實測效能評測矩陣 (Unified Performance Matrix)</span>
                     </h3>
                     <span class="text-xs text-slate-400 font-mono">BLS12-381 / BN254 / MNT224 即時換算</span>
                 </div>
 
-                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
                     <table class="w-full text-xs text-left">
-                        <thead class="bg-slate-900/90 text-slate-400 font-mono text-[11px] uppercase border-b border-slate-800">
+                        <thead class="bg-slate-900 text-slate-400 font-mono text-[11px] uppercase border-b border-slate-800">
                             <tr>
                                 <th class="p-3">方案名稱</th>
                                 <th class="p-3">屬性數 (N)</th>
                                 <th class="p-3 text-right">KeyGen</th>
                                 <th class="p-3 text-right">Encrypt</th>
                                 <th class="p-3 text-right">Decrypt</th>
-                                <th class="p-3 text-center text-purple-300">配對次數</th>
+                                <th class="p-3 text-center text-indigo-300">配對次數</th>
                                 <th class="p-3 text-right">私鑰尺寸</th>
                                 <th class="p-3 text-right">密文尺寸</th>
                                 <th class="p-3 text-center">安全模型</th>
                             </tr>
                         </thead>
-                        <tbody id="groupOpsTableBody" class="divide-y divide-slate-800/60 font-mono">
+                        <tbody id="groupOpsTableBody" class="divide-y divide-slate-800 font-mono">
                             <!-- Populated dynamically via JS -->
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- DFA Evaluation Table (Replaces duplicate section) -->
-            <div class="glass-panel p-5 rounded-2xl space-y-3">
+            <!-- DFA Evaluation Table -->
+            <div class="panel p-5 rounded-xl space-y-3 shadow-sm">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                        <span>🤖</span>
+                    <h3 class="text-xs font-semibold text-slate-200 flex items-center space-x-1.5">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
                         <span>正規語言狀態機 DFA-ABE 評測結果 (Section 8.2 & Table 7)</span>
                     </h3>
                 </div>
-                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
                     <table class="w-full text-xs text-left font-mono">
-                        <thead class="bg-slate-900/90 text-slate-400 text-[11px] uppercase border-b border-slate-800">
+                        <thead class="bg-slate-900 text-slate-400 text-[11px] uppercase border-b border-slate-800">
                             <tr>
                                 <th class="p-3">方案名稱</th>
                                 <th class="p-3">字串長度 (L)</th>
@@ -548,11 +619,11 @@
                                 <th class="p-3 text-right">KeyGen (ms)</th>
                                 <th class="p-3 text-right">Encrypt (ms)</th>
                                 <th class="p-3 text-right">Decrypt (ms)</th>
-                                <th class="p-3 text-center text-purple-300">配對次數</th>
+                                <th class="p-3 text-center text-indigo-300">配對次數</th>
                                 <th class="p-3 text-center">驗證狀態</th>
                             </tr>
                         </thead>
-                        <tbody id="dfaTableBody" class="divide-y divide-slate-800/60">
+                        <tbody id="dfaTableBody" class="divide-y divide-slate-800">
                             <!-- Populated dynamically via JS -->
                         </tbody>
                     </table>
@@ -576,12 +647,15 @@
         <!-- ========================================================================================= -->
         <!-- MODULE 3: POLICY COMPILER & COST ESTIMATOR -->
         <!-- ========================================================================================= -->
-        <section id="tab-calculator" class="hidden space-y-6">
-            <div class="glass-panel p-5 rounded-2xl space-y-4">
+        <section id="tab-calculator" class="hidden space-y-5">
+            <div class="panel p-5 rounded-xl space-y-4 shadow-sm">
                 <div>
-                    <h2 class="text-base font-bold text-white flex items-center space-x-2">
-                        <span>🧮 自訂存取控制策略 (Access Policy) 成本即時試算機</span>
-                        <span class="text-xs px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 font-mono">MSP Compiler</span>
+                    <h2 class="text-sm font-semibold text-white flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span>存取控制策略 (Access Policy) 成本編譯器</span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/60 font-mono">MSP Compiler</span>
                     </h2>
                     <p class="text-xs text-slate-400 mt-1">
                         輸入任意布林公式（支援 AND、OR、括號與屬性複用），系統即時編譯為單調跨度程式 (Monotone Span Program) 並求出線性重構向量
@@ -591,14 +665,14 @@
                 <!-- Policy Input Form -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                     <div class="md:col-span-2 space-y-1.5">
-                        <label class="block font-semibold text-slate-300">存取策略公式 (Access Policy):</label>
+                        <label class="block font-medium text-slate-300">存取策略公式 (Access Policy):</label>
                         <input type="text" id="calcPolicyInput" value="(MEDICINE:DOCTOR AND DEPT:CARDIOLOGY) OR (ROLE:DIRECTOR AND CLEARANCE:SECRET)"
-                            class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-purple-200 focus:outline-none focus:border-brand-500" />
+                            class="code-input w-full px-3 py-2 text-xs font-mono text-indigo-200 focus:outline-none" />
                     </div>
 
                     <div class="space-y-1.5">
-                        <label class="block font-semibold text-slate-300">快速載入預設場景範本:</label>
-                        <select id="calcPresetSelect" onchange="loadPresetPolicy(this.value)" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none focus:border-brand-500 cursor-pointer">
+                        <label class="block font-medium text-slate-300">快速載入預設場景範本:</label>
+                        <select id="calcPresetSelect" onchange="loadPresetPolicy(this.value)" class="code-input w-full px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none cursor-pointer">
                             <option value="medical">場景 1: 醫療跨科室協同 (Doctor + Cardiology)</option>
                             <option value="finance">場景 2: 金融多重風控簽核 (Audit + Level4)</option>
                             <option value="multi_use">場景 3: 屬性重用壓力測試 (A and B) or (A and C)</option>
@@ -608,63 +682,66 @@
                 </div>
 
                 <div class="space-y-1.5 text-xs">
-                    <label class="block font-semibold text-slate-300">解密者持有的屬性集合 (User Attributes, 逗號分隔):</label>
-                    <input type="text" id="calcAttributesInput" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY, CLEARANCE:CONFIDENTIAL"
-                        class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none focus:border-brand-500" />
+                    <label class="block font-medium text-slate-300">使用者持有屬性 (以逗號分隔):</label>
+                    <input type="text" id="calcAttributesInput" value="MEDICINE:DOCTOR, DEPT:CARDIOLOGY, CLEARANCE:SECRET"
+                        class="code-input w-full px-3 py-2 text-xs font-mono text-emerald-200 focus:outline-none" />
                 </div>
 
                 <div class="flex items-center justify-between pt-2">
                     <div class="text-xs text-slate-400 font-mono">
-                        目前評估曲線: <strong id="calcCurveLabel" class="text-purple-300">BLS12-381 (Compressed)</strong>
+                        目前評估曲線: <strong id="calcCurveLabel" class="text-indigo-300 font-medium">BLS12-381 (Compressed)</strong>
                     </div>
-                    <button onclick="evaluatePolicyInteractive()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md shadow-brand-500/20 transition-all cursor-pointer">
-                        🧮 編譯策略矩陣並計算開銷
+                    <button onclick="evaluatePolicyInteractive()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-xs transition-colors cursor-pointer flex items-center space-x-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span>編譯策略矩陣並計算開銷</span>
                     </button>
                 </div>
             </div>
 
             <!-- Compiler Results Overview -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="glass-panel p-4 rounded-xl text-center">
+                <div class="panel p-4 rounded-xl text-center shadow-xs">
                     <div class="text-xs text-slate-400 mb-1">授權判定狀態</div>
                     <div id="calcAuthStatus" class="text-sm font-bold text-emerald-400 font-mono">--</div>
-                    <div id="calcAuthBadge" class="text-[10px] text-slate-500 mt-0.5">點擊編譯確認</div>
+                    <div id="calcAuthBadge" class="text-[10px] text-slate-400 mt-0.5">點擊編譯確認</div>
                 </div>
 
-                <div class="glass-panel p-4 rounded-xl text-center">
+                <div class="panel p-4 rounded-xl text-center shadow-xs">
                     <div class="text-xs text-slate-400 mb-1">LSSS 矩陣規模 (n1 × n2)</div>
-                    <div id="calcMspDim" class="text-sm font-bold text-purple-300 font-mono">-- × --</div>
-                    <div id="calcClauseCount" class="text-[10px] text-slate-500 mt-0.5">子句數: --</div>
+                    <div id="calcMspDim" class="text-sm font-bold text-indigo-300 font-mono">-- × --</div>
+                    <div id="calcClauseCount" class="text-[10px] text-slate-400 mt-0.5">子句數: --</div>
                 </div>
 
-                <div class="glass-panel p-4 rounded-xl text-center">
+                <div class="panel p-4 rounded-xl text-center shadow-xs">
                     <div class="text-xs text-slate-400 mb-1">屬性複用度 (tau)</div>
                     <div id="calcTauVal" class="text-sm font-bold text-blue-300 font-mono">--</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">多重標記行數</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">多重標記行數</div>
                 </div>
 
-                <div class="glass-panel p-4 rounded-xl text-center">
+                <div class="panel p-4 rounded-xl text-center shadow-xs">
                     <div class="text-xs text-slate-400 mb-1">FABEO 解密配對次數</div>
                     <div id="calcFabeoPairings" class="text-sm font-bold text-emerald-400 font-mono">-- 次</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">tau + 2 恆定常數</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">tau + 2 恆定常數</div>
                 </div>
             </div>
 
             <!-- Detailed Comparison for this Policy -->
-            <div class="glass-panel p-5 rounded-2xl space-y-3">
+            <div class="panel p-5 rounded-xl space-y-3 shadow-xs">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-xs font-bold text-slate-200">各方案在此策略之具體儲存與配對開銷對比</h3>
+                    <h3 class="text-xs font-semibold text-slate-200">各方案在此策略之具體儲存與配對開銷對比</h3>
                     <div class="text-xs font-mono text-slate-400">
-                        求解耗時: <span id="calcSolveTime" class="text-purple-300">-- ms</span> | 重建行數: <span id="calcUsedRows" class="text-purple-300">--</span>
+                        求解耗時: <span id="calcSolveTime" class="text-indigo-300 font-medium">-- ms</span> | 重建行數: <span id="calcUsedRows" class="text-indigo-300 font-medium">--</span>
                     </div>
                 </div>
 
-                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                <div class="overflow-x-auto rounded-lg border border-slate-800">
                     <table class="w-full text-xs text-left font-mono">
-                        <thead class="bg-slate-900/90 text-slate-400 text-[11px] uppercase border-b border-slate-800">
+                        <thead class="bg-slate-900 text-slate-400 text-[11px] uppercase border-b border-slate-800">
                             <tr>
                                 <th class="p-3">方案名稱</th>
-                                <th class="p-3 text-center text-purple-300">解密配對次數</th>
+                                <th class="p-3 text-center text-indigo-300">解密配對次數</th>
                                 <th class="p-3">配對公式代入</th>
                                 <th class="p-3 text-right">私鑰群元素 (SK)</th>
                                 <th class="p-3 text-right">私鑰大小 (Bytes)</th>
@@ -673,7 +750,7 @@
                                 <th class="p-3 text-center">安全模型</th>
                             </tr>
                         </thead>
-                        <tbody id="calcComparisonTableBody" class="divide-y divide-slate-800/60">
+                        <tbody id="calcComparisonTableBody" class="divide-y divide-slate-800">
                             <!-- Populated dynamically via JS -->
                         </tbody>
                     </table>
@@ -684,19 +761,19 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t border-slate-800/80 bg-slate-950/60 py-4 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
+    <footer class="border-t border-slate-800 bg-[#070b14] py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400">
             <div>
                 FABEO: Fast Attribute-Based Encryption with Optimal Security (ACM CCS 2022) | Doreen Riepel & Hoeteck Wee
             </div>
-            <div class="mt-2 sm:mt-0 font-mono">
+            <div class="mt-2 sm:mt-0 font-mono text-[11px] text-slate-400">
                 客觀學術評測與基準比對環境 (Objective Comparative Evaluation)
             </div>
         </div>
     </footer>
 
     <!-- CORE LOGIC & SCRIPTS -->
-    <script>
+<script>
         // Bilinear Group Specifications (256-bit scalar field)
         const CURVE_DATA = {
             "BLS12-381": {
@@ -976,10 +1053,10 @@
                 if (el && btn) {
                     if (t === tabId) {
                         el.classList.remove('hidden');
-                        btn.className = "tab-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-purple-300 bg-brand-900/50 border border-brand-500/50 shadow-sm flex items-center space-x-2";
+                        btn.className = "tab-btn active px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-100 bg-slate-800 border border-slate-700 shadow-xs flex items-center space-x-2";
                     } else {
                         el.classList.add('hidden');
-                        btn.className = "tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 flex items-center space-x-2";
+                        btn.className = "tab-btn px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent flex items-center space-x-2";
                     }
                 }
             });
@@ -1234,7 +1311,7 @@
                 currentBenchmarks.forEach(b => {
                     const isFabeo = b.scheme_name.startsWith('FABEO');
                     const tr = document.createElement('tr');
-                    tr.className = isFabeo ? 'bg-purple-950/20 hover:bg-purple-950/30' : 'hover:bg-slate-800/40';
+                    tr.className = isFabeo ? 'bg-indigo-950/25 hover:bg-indigo-950/40' : 'hover:bg-slate-800/40';
 
                     const nameHtml = `<span class="${isFabeo ? 'text-purple-300 font-semibold' : 'text-slate-300 font-medium'}">${b.scheme_name}</span>`;
 
@@ -1265,7 +1342,7 @@
                 currentDfa.forEach(d => {
                     const isFabeo = d.scheme_name === "FABEO_DFA";
                     const tr = document.createElement('tr');
-                    tr.className = isFabeo ? 'bg-purple-950/20 hover:bg-purple-950/30' : 'hover:bg-slate-800/40';
+                    tr.className = isFabeo ? 'bg-indigo-950/25 hover:bg-indigo-950/40' : 'hover:bg-slate-800/40';
                     tr.innerHTML = `
                         <td class="p-3 font-semibold ${isFabeo ? 'text-purple-300' : 'text-slate-300'}">${d.scheme_name}</td>
                         <td class="p-3 text-slate-400">${d.string_length}</td>
@@ -1274,7 +1351,7 @@
                         <td class="p-3 text-right text-slate-300">${d.enc_time_ms} ms</td>
                         <td class="p-3 text-right font-bold ${isFabeo ? 'text-emerald-400' : 'text-slate-300'}">${d.dec_time_ms} ms</td>
                         <td class="p-3 text-center text-purple-300">${d.pairings_dec} 次</td>
-                        <td class="p-3 text-center text-emerald-400">驗證相符 ✓</td>
+                        <td class="p-3 text-center text-emerald-400">驗證相符 (Valid)</td>
                     `;
                     dfaBody.appendChild(tr);
                 });
@@ -1327,11 +1404,11 @@
             if (tag === 'HEADER') {
                 formattedLine = `\n================================================================================\n${timeStr} 🚀 ${text}\n================================================================================\n`;
             } else if (tag === 'CODE') {
-                formattedLine = `  ${timeStr} [CODE] 💻 ${text}\n`;
+                formattedLine = `  ${timeStr} [CODE] ${text}\n`;
             } else if (tag === 'INPUTS') {
-                formattedLine = `  ${timeStr} [INPUTS] 📥 ${text}\n`;
+                formattedLine = `  ${timeStr} [INPUTS] ${text}\n`;
             } else if (tag === 'EQUATION') {
-                formattedLine = `  ${timeStr} [EQUATION] 📐 論文數學等式與代數約束推導:\n${text}\n`;
+                formattedLine = `  ${timeStr} [EQUATION] 論文數學等式與代數約束推導 (Algebraic Derivation):\n${text}\n`;
             } else if (tag === 'SUCCESS') {
                 formattedLine = `${timeStr} [SUCCESS] ✓ ${text}\n`;
             } else if (tag === 'ERROR') {
@@ -1339,7 +1416,7 @@
             } else if (tag === 'MATH') {
                 formattedLine = `  ${timeStr} [MATH] ${text}\n`;
             } else if (tag === 'WARN') {
-                formattedLine = `${timeStr} [WARN] ⚠️ ${text}\n`;
+                formattedLine = `${timeStr} [WARN] ${text}\n`;
             } else {
                 formattedLine = `${timeStr} [${tag}] ${text}\n`;
             }
@@ -1362,8 +1439,8 @@
 
             navigator.clipboard.writeText(box.textContent).then(() => {
                 if (btn) {
-                    btn.textContent = '✅ 已複製！';
-                    setTimeout(() => { btn.textContent = '📋 複製日誌'; }, 2000);
+                    btn.innerHTML = '已複製';
+                    setTimeout(() => { btn.innerHTML = '複製日誌'; }, 2000);
                 }
             });
         }
@@ -1467,10 +1544,10 @@
             if (badge && text) {
                 if (satisfied) {
                     badge.className = "text-xs font-mono px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 flex items-center space-x-1.5 shadow-sm";
-                    text.textContent = "預判：授權滿足 ✓";
+                    text.textContent = "存取授權：滿足 (Authorized)";
                 } else {
                     badge.className = "text-xs font-mono px-3 py-1 rounded-full bg-rose-950/80 text-rose-300 border border-rose-800/60 flex items-center space-x-1.5 shadow-sm";
-                    text.textContent = "預判：存取拒絕 ✗";
+                    text.textContent = "存取授權：拒絕 (Denied)";
                 }
             }
 
@@ -1829,7 +1906,7 @@
             const statusLabel = document.getElementById('labOutputStatus');
             if (statusLabel) {
                 statusLabel.textContent = `BUSY: ${step.toUpperCase()}`;
-                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300 font-mono animate-pulse';
+                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono';
             }
 
             const satisfied = updateLabInputEvaluation();
@@ -1873,7 +1950,7 @@
                 appendLabLog(`系統初始化完成！耗時: ${tSetup} ms | mpk 公鑰尺寸: ${mpkBytes} Bytes | 曲線: ${curveName}`, 'SUCCESS');
 
                 document.getElementById('labBadgeSetup').className = 'w-2 h-2 rounded-full bg-emerald-400';
-                document.getElementById('labStatusTextSetup').textContent = '已就緒 ✓';
+                document.getElementById('labStatusTextSetup').textContent = '已就緒 (Ready)';
                 document.getElementById('labStatusTextSetup').className = 'font-mono text-[11px] text-emerald-400 font-bold';
                 document.getElementById('labStatSetup').innerHTML = `${tSetup} <span class="text-[10px] text-slate-400 font-normal">ms</span>`;
                 document.getElementById('labSubSetup').textContent = `mpk: ${mpkBytes} B`;
@@ -1900,7 +1977,7 @@
                 appendLabLog(`金鑰核發成功！耗時: ${tKeyGen} ms | sk 私鑰尺寸: ${skBytes} Bytes`, 'SUCCESS');
 
                 document.getElementById('labBadgeKeyGen').className = 'w-2 h-2 rounded-full bg-emerald-400';
-                document.getElementById('labStatusTextKeyGen').textContent = '已核發 ✓';
+                document.getElementById('labStatusTextKeyGen').textContent = '已核發 (Issued)';
                 document.getElementById('labStatusTextKeyGen').className = 'font-mono text-[11px] text-emerald-400 font-bold';
                 document.getElementById('labStatKeyGen').innerHTML = `${tKeyGen} <span class="text-[10px] text-slate-400 font-normal">ms</span>`;
                 document.getElementById('labSubKeyGen').textContent = `sk: ${skBytes} B`;
@@ -1929,7 +2006,7 @@
                 appendLabLog(`密文加密完成！耗時: ${tEnc} ms | 封裝總密文: ${ctBytes} Bytes`, 'SUCCESS');
 
                 document.getElementById('labBadgeEncrypt').className = 'w-2 h-2 rounded-full bg-emerald-400';
-                document.getElementById('labStatusTextEncrypt').textContent = '已加密 ✓';
+                document.getElementById('labStatusTextEncrypt').textContent = '已加密 (Encrypted)';
                 document.getElementById('labStatusTextEncrypt').className = 'font-mono text-[11px] text-emerald-400 font-bold';
                 document.getElementById('labStatEncrypt').innerHTML = `${tEnc} <span class="text-[10px] text-slate-400 font-normal">ms</span>`;
                 document.getElementById('labSubEncrypt').textContent = `密文: ${ctBytes} B`;
@@ -1961,10 +2038,10 @@
                     const pairingsCount = scheme === 'FABEO_KP' ? 2 : (scheme === 'FABEO_CP' ? 3 : (scheme.includes('FAME') ? 6 : (attrs.length + 2)));
                     appendLabLog(`成功重構對稱密鑰 K_DEM = e(g₁, g₂)^(alpha · s) | 總配對次數: ${pairingsCount} 次`, 'MATH');
                     appendLabLog(`AES-256-GCM 標籤校驗通過！還原明文: "${plainMsg}"`, 'SUCCESS');
-                    appendLabLog(`🎉 解密成功！明文與原始輸入資料 100% 完全相符！耗時: ${tDec} ms`, 'SUCCESS');
+                    appendLabLog(`解密還原成功：明文與原始輸入資料 100% 吻合 (Reconstruction Succeeded)。耗時: ${tDec} ms`, 'SUCCESS');
 
                     document.getElementById('labBadgeDecrypt').className = 'w-2 h-2 rounded-full bg-emerald-400';
-                    document.getElementById('labStatusTextDecrypt').textContent = '解密成功 ✓';
+                    document.getElementById('labStatusTextDecrypt').textContent = '已解密 (Decrypted)';
                     document.getElementById('labStatusTextDecrypt').className = 'font-mono text-[11px] text-emerald-400 font-bold';
                     document.getElementById('labStatDecrypt').innerHTML = `${tDec} <span class="text-[10px] text-emerald-400 font-normal">ms</span>`;
                     document.getElementById('labSubDecrypt').textContent = `配對: ${pairingsCount} 次 (${isFabeo ? '常數' : '基準'})`;
@@ -1974,7 +2051,7 @@
                     appendLabLog(`密文保持加密保護狀態，明文未釋放。耗時: ${tDec} ms`, 'ERROR');
 
                     document.getElementById('labBadgeDecrypt').className = 'w-2 h-2 rounded-full bg-rose-500';
-                    document.getElementById('labStatusTextDecrypt').textContent = '存取拒絕 ✗';
+                    document.getElementById('labStatusTextDecrypt').textContent = '存取拒絕 (Denied)';
                     document.getElementById('labStatusTextDecrypt').className = 'font-mono text-[11px] text-rose-400 font-bold';
                     document.getElementById('labStatDecrypt').innerHTML = `${tDec} <span class="text-[10px] text-rose-400 font-normal">ms</span>`;
                     document.getElementById('labSubDecrypt').textContent = `授權不符 | 拒絕解密`;
@@ -1989,7 +2066,7 @@
                 await runLabStep('keygen');
                 await runLabStep('encrypt');
                 await runLabStep('decrypt');
-                appendLabLog(`🎉 全流程實驗圓滿完成！您可點擊上方任一階段按鈕進行單獨調試。`, 'SUCCESS');
+                appendLabLog(`全流程執行完畢 (Pipeline Execution Completed)。可點擊上方階段按鈕進行獨立調試。`, 'SUCCESS');
             }
 
             if (statusLabel) {
@@ -2037,9 +2114,9 @@
             }
 
             // Update Badges
-            document.getElementById('calcAuthStatus').textContent = satisfied ? '滿足授權 ✓' : '存取拒絕 ✗';
+            document.getElementById('calcAuthStatus').textContent = satisfied ? '滿足授權 (Authorized)' : '存取拒絕 (Denied)';
             document.getElementById('calcAuthStatus').className = `text-sm font-bold font-mono ${satisfied ? 'text-emerald-400' : 'text-rose-400'}`;
-            document.getElementById('calcAuthBadge').textContent = satisfied ? '高斯求解成功' : '無法張成向量';
+            document.getElementById('calcAuthBadge').textContent = satisfied ? '高斯求解成功 (Reconstructed)' : '無法張成目標向量 (No Span)';
             document.getElementById('calcMspDim').textContent = `${n1} × ${n2}`;
             document.getElementById('calcClauseCount').textContent = `子句數: ${clauses}`;
             document.getElementById('calcTauVal').textContent = `${tau}`;
@@ -2100,7 +2177,7 @@
 
                 schemes.forEach(sch => {
                     const tr = document.createElement('tr');
-                    tr.className = sch.isFabeo ? 'bg-purple-950/20 hover:bg-purple-950/30' : 'hover:bg-slate-800/40';
+                    tr.className = sch.isFabeo ? 'bg-indigo-950/25 hover:bg-indigo-950/40' : 'hover:bg-slate-800/40';
                     tr.innerHTML = `
                         <td class="p-3 font-semibold ${sch.isFabeo ? 'text-purple-300' : 'text-slate-300'}">${sch.name}</td>
                         <td class="p-3 text-center font-bold ${sch.isFabeo ? 'text-emerald-400' : 'text-slate-300'}">${sch.pairings} 次</td>
