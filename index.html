@@ -200,9 +200,9 @@
                         <p class="text-xs text-slate-400 mt-0.5">提供自訂明文、存取策略與解密屬性，支援逐步執行代數運算並於診斷終端即時輸出論文數學等式與驗證結果</p>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <span id="labLiveEvalBadge" class="text-xs font-mono px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 flex items-center space-x-1.5 shadow-xs">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                            <span id="labLiveEvalText">存取授權：滿足 (Authorized)</span>
+                        <span id="labLiveEvalBadge" class="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-900 text-slate-400 border border-slate-800 flex items-center space-x-1.5 shadow-xs">
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                            <span id="labLiveEvalText">存取授權：待執行測試 (Untested)</span>
                         </span>
                         <span id="curveParamInfo" class="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-900 text-slate-300 border border-slate-800 hidden sm:inline-block">
                             BLS12-381 (128-bit)
@@ -498,14 +498,15 @@
                     </p>
                 </div>
                 <div class="flex items-center space-x-3 text-xs">
-                    <span id="benchLogStatus" class="font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-800/40">
-                        CPU 算力校準: 1.00x baseline
+                    <span id="benchLogStatus" class="font-mono text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                        狀態: 尚未執行評測 (Not Executed)
                     </span>
                     <button onclick="recalculateAllDynamicBenchmarks(true)" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer flex items-center space-x-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span>重新校準跑分</span>
+                        <span>執行效能評測 (Run Benchmark Suite)</span>
                     </button>
                 </div>
             </div>
@@ -751,7 +752,11 @@
                             </tr>
                         </thead>
                         <tbody id="calcComparisonTableBody" class="divide-y divide-slate-800">
-                            <!-- Populated dynamically via JS -->
+                            <tr>
+                                <td colspan="8" class="p-8 text-center text-slate-500 font-mono text-xs">
+                                    尚未編譯策略。請設定存取策略後點擊「編譯策略矩陣並計算開銷」以產生評估數據。
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -1038,6 +1043,8 @@
         let charts = {};
         let currentBenchmarks = [];
         let currentDfa = [];
+        let benchmarksExecuted = false;
+        let policyEvaluated = false;
 
         // Tab Switching Logic (Consolidated to 3 clean tabs)
         function switchTab(tabId) {
@@ -1080,23 +1087,24 @@
 
         function updateCurveSettings() {
             const spec = getCurveSizes();
-            const s = spec.sizes;
             const infoEl = document.getElementById('curveParamInfo');
             if (infoEl) {
-                infoEl.textContent = `${spec.name} (${spec.mode}, G1:${s.g1}B, G2:${s.g2}B, GT:${s.gt}B)`;
+                infoEl.textContent = `${spec.name} (${spec.security})`;
             }
             const calcLabel = document.getElementById('calcCurveLabel');
             if (calcLabel) {
                 calcLabel.textContent = `${spec.name} (${spec.mode})`;
             }
 
-            currentBenchmarks = generateDynamicBenchmarks(spec.name, spec.mode);
-            currentDfa = generateDynamicDfa(spec.name);
-
-            updateAllViews();
-            evaluatePolicyInteractive();
-
-            appendLabLog(`[DYNAMIC UPDATE] 已即時動態重算 ${spec.name} (${spec.mode}) 全量評測曲線數據`, 'CONFIG');
+            // Only recalculate if benchmarks have already been triggered by user
+            if (benchmarksExecuted) {
+                currentBenchmarks = generateDynamicBenchmarks(spec.name, spec.mode, clientHardwareCalib);
+                currentDfa = generateDynamicDfa(spec.name, clientHardwareCalib);
+                updateAllViews();
+            }
+            if (policyEvaluated) {
+                evaluatePolicyInteractive();
+            }
         }
 
         // Setup Charts using Chart.js
@@ -1208,6 +1216,17 @@
         function updateBenchmarkCharts() {
             if (!charts.decTime) return;
 
+            if (!currentBenchmarks || currentBenchmarks.length === 0) {
+                [charts.decTime, charts.pairings, charts.ctSize, charts.dfa].forEach(c => {
+                    if (c) {
+                        c.data.labels = [];
+                        c.data.datasets = [];
+                        c.update();
+                    }
+                });
+                return;
+            }
+
             const N_labels = [10, 20, 50, 100];
             const schemes = ["FABEO_CP", "ABGW_CP", "BSW_CP", "FAME_CP", "FABEO_KP"];
             const colors = {
@@ -1307,8 +1326,11 @@
             // Render Unified Matrix Table
             const tbody = document.getElementById('groupOpsTableBody');
             if (tbody) {
-                tbody.innerHTML = '';
-                currentBenchmarks.forEach(b => {
+                if (!currentBenchmarks || currentBenchmarks.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="p-8 text-center text-slate-500 font-mono text-xs">尚未執行基準測試。請點擊上方「執行效能評測」按鈕開始測試並生成實測數據。</td></tr>';
+                } else {
+                    tbody.innerHTML = '';
+                    currentBenchmarks.forEach(b => {
                     const isFabeo = b.scheme_name.startsWith('FABEO');
                     const tr = document.createElement('tr');
                     tr.className = isFabeo ? 'bg-indigo-950/25 hover:bg-indigo-950/40' : 'hover:bg-slate-800/40';
@@ -1333,13 +1355,17 @@
                     `;
                     tbody.appendChild(tr);
                 });
+                }
             }
 
             // Render DFA Table
             const dfaBody = document.getElementById('dfaTableBody');
-            if (dfaBody && currentDfa.length > 0) {
-                dfaBody.innerHTML = '';
-                currentDfa.forEach(d => {
+            if (dfaBody) {
+                if (!currentDfa || currentDfa.length === 0) {
+                    dfaBody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500 font-mono text-xs">尚未執行 DFA 狀態機測試。請點擊上方「執行效能評測」按鈕開始測試。</td></tr>';
+                } else {
+                    dfaBody.innerHTML = '';
+                    currentDfa.forEach(d => {
                     const isFabeo = d.scheme_name === "FABEO_DFA";
                     const tr = document.createElement('tr');
                     tr.className = isFabeo ? 'bg-indigo-950/25 hover:bg-indigo-950/40' : 'hover:bg-slate-800/40';
@@ -1355,6 +1381,7 @@
                     `;
                     dfaBody.appendChild(tr);
                 });
+                }
             }
         }
 
@@ -1366,15 +1393,16 @@
             const logStatus = document.getElementById('benchLogStatus');
             if (logStatus) {
                 logStatus.textContent = `CPU 算力校準: ${calib}x baseline`;
+                logStatus.className = 'font-mono text-emerald-400 bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-800/40';
             }
 
+            benchmarksExecuted = true;
             currentBenchmarks = generateDynamicBenchmarks(spec.name, spec.mode, calib);
             currentDfa = generateDynamicDfa(spec.name, calib);
 
             updateAllViews();
-            evaluatePolicyInteractive();
 
-            appendLabLog(`[BENCHMARK] 硬體校準完成，已針對 ${spec.name} (${spec.mode}) 更新全量評測數據`, 'SUCCESS');
+            appendLabLog(`[BENCHMARK] 效能評測完成，已針對 ${spec.name} (${spec.mode}) 產生實測數據`, 'SUCCESS');
         }
 
         // =========================================================================
@@ -1886,10 +1914,17 @@
             document.getElementById('labStatDecrypt').innerHTML = '-- <span class="text-[10px] text-slate-400 font-normal">ms</span>';
             document.getElementById('labSubDecrypt').textContent = '配對次數: -- 次';
 
+            const badge = document.getElementById('labLiveEvalBadge');
+            const text = document.getElementById('labLiveEvalText');
+            if (badge && text) {
+                badge.className = "text-xs font-mono px-2.5 py-1 rounded-md bg-slate-900 text-slate-400 border border-slate-800 flex items-center space-x-1.5 shadow-xs";
+                badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span><span id="labLiveEvalText">存取授權：待執行測試 (Untested)</span>';
+            }
+
             const statusLabel = document.getElementById('labOutputStatus');
             if (statusLabel) {
                 statusLabel.textContent = 'READY';
-                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-mono';
+                statusLabel.className = 'px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono';
             }
         }
 
@@ -2096,6 +2131,7 @@
         }
 
         function evaluatePolicyInteractive() {
+            policyEvaluated = true;
             const policy = document.getElementById('calcPolicyInput').value.trim();
             const attrsRaw = document.getElementById('calcAttributesInput').value.trim();
             const attrs = attrsRaw.split(',').map(a => a.trim()).filter(a => a.length > 0);
@@ -2193,13 +2229,12 @@
             }
         }
 
-        // Initialize on DOM load
+        // Initialize on DOM load (ZERO DATA before test execution)
         window.addEventListener('DOMContentLoaded', () => {
             initCharts();
-            calibrateClientHardware();
             updateCurveSettings();
-            evaluatePolicyInteractive();
-            updateLabInputEvaluation();
+            renderQuickAttrPills();
+            renderBenchmarkTables();
             // Default to Step Lab
             switchTab('lab');
         });
